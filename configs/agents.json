@@ -1,8 +1,8 @@
 {
   "agents": [
-    {"id": "ash", "name": "Ash", "x": 9, "y": 5, "persona": "curious and bold", "brain": ""},
-    {"id": "bramble", "name": "Bramble", "x": 6, "y": 3, "persona": "cautious and practical", "brain": ""},
-    {"id": "cinder", "name": "Cinder", "x": 5, "y": 7, "persona": "social and scatterbrained", "brain": ""},
-    {"id": "dew", "name": "Dew", "x": 8, "y": 10, "persona": "quiet and observant", "brain": ""}
+    {"id": "ash", "name": "Ash", "x": 9, "y": 5, "persona": "curious and bold", "brain": "", "inventory": {"flint": 1, "wood": 2}},
+    {"id": "bramble", "name": "Bramble", "x": 6, "y": 3, "persona": "cautious and practical", "brain": "", "inventory": {"stone": 2, "flint": 1, "wood": 4}},
+    {"id": "cinder", "name": "Cinder", "x": 5, "y": 7, "persona": "social and scatterbrained", "brain": "", "inventory": {"wood": 2, "flint": 1}},
+    {"id": "dew", "name": "Dew", "x": 8, "y": 10, "persona": "quiet and observant", "brain": "", "inventory": {"berries": 2}}
   ]
 }

@@ -1,6 +1,7 @@
 import random
 
 from genesis.world.actions import step_action
+from genesis.world.discovery import DiscoveryGraph
 from genesis.world.grid import WorldMap
 from genesis.world.instinct import choose_action
 from genesis.world.needs import tick_needs
@@ -9,11 +10,13 @@ from genesis.world.structures import has_warmth_source
 
 
 class Engine:
-    def __init__(self, state: WorldState, world_map: WorldMap, settings: dict):
+    def __init__(self, state: WorldState, world_map: WorldMap, settings: dict,
+                 graph: DiscoveryGraph | None = None):
         self.state = state
         self.world_map = world_map
         self.settings = settings
         self.rng = random.Random(state.seed)
+        self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json")
 
     def tick(self) -> list[dict]:
         events: list[dict] = []
@@ -23,8 +26,10 @@ class Engine:
             events += tick_needs(agent, minute, self.settings, near_warmth=near)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 agent.current_action = choose_action(
-                    agent, self.state, self.world_map, self.settings, self.rng)
-            events += step_action(agent, self.state, self.world_map, self.settings)
+                    agent, self.state, self.world_map, self.settings, self.rng,
+                    self.graph)
+            events += step_action(agent, self.state, self.world_map,
+                                  self.settings, self.graph)
         for ev in events:
             ev.setdefault("minute", minute)
         self.state.sim_minutes += 1
