@@ -59,7 +59,7 @@ def _finish(agent: Agent, event: dict) -> list[dict]:
 
 
 def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                settings: dict, graph=None) -> list[dict]:
+                settings: dict, graph=None, magic=None) -> list[dict]:
     action = agent.current_action
     if action is None:
         return []

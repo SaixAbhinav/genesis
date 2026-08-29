@@ -47,7 +47,7 @@ def _raw_material_here(agent: Agent, state: WorldState, world_map: WorldMap):
 
 
 def choose_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                  settings: dict, rng, graph=None) -> dict | None:
+                  settings: dict, rng, graph=None, magic=None) -> dict | None:
     if agent.status != "active":
         return None
     if not is_daytime(state.sim_minutes, settings):

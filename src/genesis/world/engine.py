@@ -10,26 +10,38 @@ from genesis.world.structures import has_warmth_source
 
 
 class Engine:
-    def __init__(self, state: WorldState, world_map: WorldMap, settings: dict,
-                 graph: DiscoveryGraph | None = None):
+    def __init__(self, state: WorldState, world_map: WorldMap | None = None,
+                 settings: dict | None = None, graph: DiscoveryGraph | None = None,
+                 maps: list[WorldMap] | None = None, layers: list | None = None,
+                 magic: dict | None = None):
         self.state = state
-        self.world_map = world_map
+        if maps is None:
+            maps = [world_map] if world_map is not None else []
+        self.maps = maps
         self.settings = settings
         self.rng = random.Random(state.seed)
         self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json")
+        self.layers = layers or []
+        self.magic = magic
+
+    def map_for(self, agent):
+        return self.maps[agent.layer]
 
     def tick(self) -> list[dict]:
         events: list[dict] = []
         minute = self.state.sim_minutes
         for agent in self.state.agents:
+            if agent.status == "dead":
+                continue
+            wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
             events += tick_needs(agent, minute, self.settings, near_warmth=near)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 agent.current_action = choose_action(
-                    agent, self.state, self.world_map, self.settings, self.rng,
-                    self.graph)
-            events += step_action(agent, self.state, self.world_map,
-                                  self.settings, self.graph)
+                    agent, self.state, wm, self.settings, self.rng,
+                    self.graph, self.magic)
+            events += step_action(agent, self.state, wm,
+                                  self.settings, self.graph, self.magic)
         for ev in events:
             ev.setdefault("minute", minute)
         self.state.sim_minutes += 1
