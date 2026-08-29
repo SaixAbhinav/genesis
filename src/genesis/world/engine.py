@@ -37,8 +37,9 @@ class Engine:
             wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
             events += tick_needs(agent, minute, self.settings, near_warmth=near)
-            if self.layers and 0 <= agent.layer < len(self.layers):
-                lc = self.layers[agent.layer]
+            layers = self.settings.get("layers", []) if self.settings else []
+            if layers and 0 <= agent.layer < len(layers):
+                lc = layers[agent.layer]
                 events += miasma_tick(agent, lc, minute)
                 events += creature_damage(agent, lc)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
