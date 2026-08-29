@@ -2,6 +2,20 @@ from genesis.cli import run_sim
 from genesis.persistence.db import connect, load_state
 
 
+def test_engine_loads_three_layer_world():
+    from genesis.world.engine import Engine
+    from genesis.world.grid import WorldMap
+    import json, pathlib
+    layers = json.loads(pathlib.Path("configs/layers.json").read_text())
+    assert len(layers["layers"]) == 3
+    maps = [WorldMap.from_file(l["map"]) for l in layers["layers"]]
+    assert len(maps) == 3
+    engine = Engine.from_configs("configs")
+    assert len(engine.maps) == 3
+    assert len(engine.settings["layers"]) == 3
+    assert engine.magic is not None
+
+
 def test_run_sim_two_days_survives_and_persists(tmp_path):
     db = tmp_path / "w.db"
     summary = run_sim(days=2, db_path=db, seed=42)

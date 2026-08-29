@@ -1,0 +1,72 @@
+{
+  "attributes": ["fire", "water", "wind", "earth", "healing"],
+  "ranks": ["beginner", "intermediate", "advanced", "saint", "king"],
+  "rank_xp": {
+    "beginner": 0,
+    "intermediate": 20,
+    "advanced": 60,
+    "saint": 140,
+    "king": 300
+  },
+  "spells": [
+    {
+      "name": "minor_heal",
+      "kind": "spell",
+      "attribute": "healing",
+      "requires": ["mana_shard"],
+      "prereqs": {},
+      "base_cast_minutes": 5,
+      "mana_cost": 8,
+      "xp_per_cast": 6,
+      "effect": {"type": "reduce_strain", "amount": 20, "bonus": {"energy": 10}}
+    },
+    {
+      "name": "purify",
+      "kind": "spell",
+      "attribute": "water",
+      "requires": ["arcane_moss"],
+      "prereqs": {},
+      "base_cast_minutes": 4,
+      "mana_cost": 6,
+      "xp_per_cast": 5,
+      "effect": {"type": "clear_miasma", "duration": 120}
+    },
+    {
+      "name": "kindle",
+      "kind": "spell",
+      "attribute": "fire",
+      "requires": ["ember_dust"],
+      "prereqs": {},
+      "base_cast_minutes": 3,
+      "mana_cost": 5,
+      "xp_per_cast": 4,
+      "effect": {"type": "warmth", "amount": 25}
+    },
+    {
+      "name": "stone_shape",
+      "kind": "spell",
+      "attribute": "earth",
+      "requires": ["quarry_dust"],
+      "prereqs": {},
+      "base_cast_minutes": 6,
+      "mana_cost": 10,
+      "xp_per_cast": 7,
+      "effect": {"type": "build_shelter", "structure": "stone_hut"}
+    },
+    {
+      "name": "updraft",
+      "kind": "spell",
+      "attribute": "wind",
+      "requires": ["feather_charm"],
+      "prereqs": {},
+      "base_cast_minutes": 4,
+      "mana_cost": 7,
+      "xp_per_cast": 5,
+      "effect": {"type": "negate_fall", "duration": 60}
+    }
+  ],
+  "params": {
+    "mana_depletion_frac": 0.15,
+    "mana_growth_step": 5.0
+  }
+}

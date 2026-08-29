@@ -1,0 +1,32 @@
+{
+  "rows": [
+    "FFFFGGGGRRRRCRRGGGGG",
+    "FFFFGGGGGRRRRRGGGGGG",
+    "FFFFGGGGGGRRGGGGGGGG",
+    "FFFGGGGGGGGGGGGGGGGG",
+    "FFGGGGGGGGGGGGGGGGGG",
+    "FGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGG",
+    "GGSWWWWWWWWWWWWWWSGG",
+    "GGSSGGGGGGGGGGMMSSGG",
+    "GGGGGGGGGGGGGGMMGGGG",
+    "GGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGG"
+  ],
+  "resources": [
+    {"type": "wood", "x": 1, "y": 1, "qty": 40},
+    {"type": "wood", "x": 2, "y": 3, "qty": 40},
+    {"type": "berries", "x": 1, "y": 2, "qty": 25},
+    {"type": "berries", "x": 13, "y": 11, "qty": 25},
+    {"type": "stone", "x": 10, "y": 0, "qty": 40},
+    {"type": "flint", "x": 12, "y": 1, "qty": 15},
+    {"type": "water", "x": 5, "y": 8, "qty": 9999},
+    {"type": "water", "x": 12, "y": 8, "qty": 9999},
+    {"type": "fish", "x": 7, "y": 8, "qty": 20},
+    {"type": "mana_shard", "x": 15, "y": 3, "qty": 5},
+    {"type": "ember_dust", "x": 17, "y": 5, "qty": 5}
+  ]
+}

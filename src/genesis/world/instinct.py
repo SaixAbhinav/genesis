@@ -6,7 +6,7 @@ from genesis.world.state import Agent, WorldState
 def _nearest_resource(agent: Agent, state: WorldState, rtype: str):
     best, best_d = None, None
     for r in state.resources:
-        if r.type == rtype and r.qty > 0:
+        if r.type == rtype and r.qty > 0 and r.layer == agent.layer:
             d = abs(r.x - agent.x) + abs(r.y - agent.y)
             if best_d is None or d < best_d:
                 best, best_d = r, d
@@ -47,9 +47,16 @@ def _raw_material_here(agent: Agent, state: WorldState, world_map: WorldMap):
 
 
 def choose_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                  settings: dict, rng, graph=None) -> dict | None:
+                  settings: dict, rng, graph=None, magic=None) -> dict | None:
     if agent.status != "active":
         return None
+    # --- Abyss survival: heal off dangerous strain ---
+    if magic is not None and agent.strain >= settings.get("strain_heal_threshold", 1e9):
+        for name in agent.knowledge:
+            spell = magic.spell(name)
+            if (spell and spell["effect"]["type"] == "reduce_strain"
+                    and agent.mana >= spell["mana_cost"]):
+                return {"action": "cast", "spell": name}
     if not is_daytime(state.sim_minutes, settings):
         return {"action": "sleep"}
     if agent.needs.hunger < 40:

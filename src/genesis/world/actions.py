@@ -1,14 +1,17 @@
+from genesis.world.abyss import action_fails
+from genesis.world.effects import apply_effect
 from genesis.world.grid import WorldMap
+from genesis.world.hazards import fall_check
 from genesis.world.needs import is_daytime
 from genesis.world.state import Agent, WorldState
 from genesis.world.structures import Structure
 
 VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
-         "experiment_with", "build"}
+         "experiment_with", "build", "cast", "descend", "ascend", "harvest_relic"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
-                    world_map: WorldMap, graph=None) -> tuple[bool, str]:
+                    world_map: WorldMap, graph=None, magic=None, settings: dict = None) -> tuple[bool, str]:
     if not isinstance(action, dict) or "action" not in action:
         return False, "malformed action"
     verb = action["action"]
@@ -22,8 +25,8 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
     if verb == "gather" and not isinstance(action.get("resource"), str):
         return False, "gather needs a resource name"
     if verb == "experiment_with":
-        if graph is None:
-            return False, "no discovery graph available"
+        if graph is None and magic is None:
+            return False, "no discovery graph or magic available"
         items = action.get("items")
         if not isinstance(items, list) or not items:
             return False, "experiment_with needs a non-empty items list"
@@ -39,6 +42,33 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
         for req in spec.get("requires", []):
             if req not in agent.knowledge:
                 return False, f"needs to know {req} first"
+    if verb == "cast":
+        if magic is None:
+            return False, "no magic available"
+        name = action.get("spell", "")
+        if name not in agent.knowledge:
+            return False, f"does not know {name}"
+        spell = magic.spell(name)
+        if spell is None:
+            return False, f"no such spell {name}"
+        for attr, rank_name in spell.get("prereqs", {}).get("attribute_rank", {}).items():
+            need = magic.ranks.index(rank_name)
+            if agent.attr_rank.get(attr, 0) < need:
+                return False, f"{attr} rank too low"
+        if agent.mana < spell["mana_cost"]:
+            return False, "not enough mana"
+    if verb in ("descend", "ascend"):
+        layers = settings.get("layers", []) if settings else []
+        if not layers:
+            return False, "no layers configured"
+        link = layers[agent.layer].get("link", {})
+        tile = link.get(verb)
+        if tile is None or [agent.x, agent.y] != tile:
+            return False, f"not on a {verb} tile"
+        if verb == "descend" and agent.layer + 1 >= len(layers):
+            return False, "no deeper layer"
+        if verb == "ascend" and agent.layer == 0:
+            return False, "already at the top"
     return True, ""
 
 
@@ -46,10 +76,11 @@ def _tiles_near(agent: Agent, world_map: WorldMap) -> list[tuple[int, int]]:
     return [(agent.x, agent.y)] + world_map.neighbors4(agent.x, agent.y)
 
 
-def _find_resource(state: WorldState, rtype: str, tiles: list[tuple[int, int]]):
+def _find_resource(state: WorldState, rtype: str, tiles: list[tuple[int, int]], agent: Agent = None):
     for r in state.resources:
         if r.type == rtype and r.qty > 0 and (r.x, r.y) in tiles:
-            return r
+            if agent is None or r.layer == agent.layer:
+                return r
     return None
 
 
@@ -59,15 +90,24 @@ def _finish(agent: Agent, event: dict) -> list[dict]:
 
 
 def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                settings: dict, graph=None) -> list[dict]:
+                settings: dict, graph=None, magic=None, rng=None) -> list[dict]:
     action = agent.current_action
     if action is None:
         return []
-    ok, why = validate_action(action, agent, state, world_map, graph)
+    ok, why = validate_action(action, agent, state, world_map, graph, magic, settings)
     if not ok:
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
     verb = action["action"]
+
+    if rng is not None and verb in ("move_to", "gather", "experiment_with", "build",
+                                    "descend", "ascend", "harvest_relic"):
+        layers = settings.get("layers", []) if settings else []
+        if layers and 0 <= agent.layer < len(layers):
+            if action_fails(agent, layers[agent.layer], rng):
+                return _finish(agent, {"type": "action_fail", "agent": agent.id,
+                                       "cause": "curse"})
+
     m = state.sim_minutes
 
     if verb == "move_to":
@@ -88,6 +128,10 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 agent.x, agent.y = step
                 events = [{"type": "moved", "agent": agent.id,
                            "x": agent.x, "y": agent.y}]
+                if rng is not None and settings is not None:
+                    layers = settings.get("layers", [])
+                    if layers and 0 <= agent.layer < len(layers):
+                        events += fall_check(agent, world_map, layers[agent.layer], m, rng)
                 if (agent.x, agent.y) == (tx, ty):
                     agent.current_action = None
                     events.append({"type": "arrived", "agent": agent.id,
@@ -100,7 +144,7 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         if rtype == "water":
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "drink water instead"})
-        r = _find_resource(state, rtype, _tiles_near(agent, world_map))
+        r = _find_resource(state, rtype, _tiles_near(agent, world_map), agent)
         if r is None:
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "nothing here"})
@@ -153,7 +197,19 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                                "seen_agents": seen})
 
     if verb == "experiment_with":
-        result = graph.match(action["items"], agent.knowledge)
+        if graph is not None:
+            result = graph.match(action["items"], agent.knowledge)
+        else:
+            result = None
+        if result is None and magic is not None:
+            result = magic.discoverable(action["items"], agent.knowledge)
+            if result is not None:
+                agent.knowledge.append(result)
+                spell = magic.spell(result)
+                agent.attr_rank.setdefault(spell["attribute"], 0)
+                agent.attr_xp.setdefault(spell["attribute"], 0.0)
+                return _finish(agent, {"type": "discovered", "agent": agent.id,
+                                       "discovery": result})
         if result is None:
             return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
                                    "items": action["items"]})
@@ -191,4 +247,59 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 built_by=agent.id, built_minute=state.sim_minutes))
         return _finish(agent, {"type": "built", "agent": agent.id,
                                "structure": action["structure"]})
+
+    if verb == "cast":
+        spell = magic.spell(action["spell"])
+        ca = agent.current_action
+        if "cast_until" not in ca:
+            ca["cast_until"] = m + magic.cast_minutes(spell, agent)
+            return []  # chanting
+        if m < ca["cast_until"]:
+            return []  # still chanting
+        agent.mana -= spell["mana_cost"]
+        events = apply_effect(spell["effect"], agent, state, world_map, settings, m)
+        ranked = magic.award_xp(agent, spell["attribute"], spell["xp_per_cast"])
+        magic.note_cast_mana(agent)
+        agent.current_action = None
+        events.append({"type": "cast", "agent": agent.id, "spell": spell["name"],
+                       "ranked_up": ranked})
+        return events
+
+    if verb == "descend":
+        layers = settings["layers"]
+        agent.layer += 1
+        ex, ey = layers[agent.layer]["link"]["entry_down"]
+        agent.x, agent.y = ex, ey
+        return _finish(agent, {"type": "descended", "agent": agent.id,
+                               "layer": agent.layer})
+
+    if verb == "ascend":
+        layers = settings["layers"]
+        left = agent.layer
+        agent.layer -= 1
+        ex, ey = layers[agent.layer]["link"]["entry_up"]
+        agent.x, agent.y = ex, ey
+        agent.strain += layers[left]["curse_strain"]
+        return _finish(agent, {"type": "ascended", "agent": agent.id,
+                               "layer": agent.layer, "strain": agent.strain,
+                               "curse_from": left})
+
+    if verb == "harvest_relic":
+        tiles = _tiles_near(agent, world_map)
+        relic = next((r for r in state.resources
+                      if r.type.startswith("relic") and r.qty > 0
+                      and r.layer == agent.layer and (r.x, r.y) in tiles), None)
+        if relic is None:
+            return _finish(agent, {"type": "harvest_failed", "agent": agent.id,
+                                   "reason": "no relic here"})
+        payload = (settings or {}).get("relics", {}).get(relic.type, {})
+        relic.qty -= 1
+        agent.inventory["relic_value"] = (agent.inventory.get("relic_value", 0)
+                                          + int(payload.get("value", 0)))
+        if payload.get("mana_max"):
+            agent.mana_max += float(payload["mana_max"])
+        return _finish(agent, {"type": "relic_taken", "agent": agent.id,
+                               "relic": relic.type,
+                               "value": payload.get("value", 0)})
+
     return []

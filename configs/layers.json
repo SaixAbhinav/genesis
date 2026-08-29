@@ -1,0 +1,46 @@
+{
+  "layers": [
+    {
+      "name": "The Edge",
+      "depth_m": [0, 1350],
+      "map": "configs/maps/layer0.json",
+      "curse_strain": 5,
+      "link": {"descend": [12, 0], "entry_up": [12, 0]},
+      "relics": [
+        {"type": "relic:trinket", "x": 16, "y": 6, "qty": 1, "value": 10}
+      ]
+    },
+    {
+      "name": "Forest of Temptation",
+      "depth_m": [1350, 2600],
+      "map": "configs/maps/layer1.json",
+      "curse_strain": 20,
+      "curse_band": [15, 50],
+      "curse_fail_chance": 0.15,
+      "miasma_damage": 1.5,
+      "miasma_need": "energy",
+      "link": {
+        "ascend": [0, 0], "entry_down": [0, 0],
+        "descend": [8, 7], "entry_up": [8, 7]
+      },
+      "relics": [
+        {"type": "relic:seal", "x": 2, "y": 5, "qty": 1, "value": 30}
+      ]
+    },
+    {
+      "name": "Great Fault",
+      "depth_m": [2600, 7000],
+      "map": "configs/maps/layer2.json",
+      "curse_strain": 50,
+      "curse_band": [50, 200],
+      "curse_fail_chance": 0.25,
+      "cliff_tiles": [[5, 4], [6, 4]],
+      "fall_strain": 15,
+      "creature_damage": 1.0,
+      "link": {"entry_down": [0, 0], "ascend": [0, 0]},
+      "relics": [
+        {"type": "relic:artifact", "x": 3, "y": 3, "qty": 1, "value": 100, "mana_max": 15}
+      ]
+    }
+  ]
+}

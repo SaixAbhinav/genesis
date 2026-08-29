@@ -10,6 +10,7 @@ class Structure:
     y: int
     built_by: str
     built_minute: int
+    layer: int = 0
 
 
 def _cheb(ax: int, ay: int, bx: int, by: int) -> int:

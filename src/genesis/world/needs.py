@@ -26,6 +26,9 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
                            "minute": sim_minutes})
         return events
 
+    if agent.strain > 0:
+        agent.strain = max(0.0, agent.strain - settings.get("strain_decay_per_min", 0.0))
+
     day = is_daytime(sim_minutes, settings)
     n.hunger = _clamp(n.hunger - settings["hunger_decay_per_min"])
     if agent.status == "sleeping":
@@ -43,9 +46,15 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
         n.warmth = _clamp(n.warmth - rate)
 
     if min(n.hunger, n.energy, n.warmth) <= 0:
-        agent.status = "collapsed"
-        agent.collapse_until = sim_minutes + settings["collapse_duration_min"]
-        agent.current_action = None
-        events.append({"type": "collapsed", "agent": agent.id,
-                       "minute": sim_minutes})
+        if agent.strain >= settings.get("strain_lethal_threshold", float("inf")):
+            agent.status = "dead"
+            agent.current_action = None
+            events.append({"type": "died", "agent": agent.id, "minute": sim_minutes,
+                           "cause": "curse"})
+        else:
+            agent.status = "collapsed"
+            agent.collapse_until = sim_minutes + settings["collapse_duration_min"]
+            agent.current_action = None
+            events.append({"type": "collapsed", "agent": agent.id,
+                           "minute": sim_minutes})
     return events
