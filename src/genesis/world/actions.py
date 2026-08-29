@@ -1,14 +1,15 @@
+from genesis.world.effects import apply_effect
 from genesis.world.grid import WorldMap
 from genesis.world.needs import is_daytime
 from genesis.world.state import Agent, WorldState
 from genesis.world.structures import Structure
 
 VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
-         "experiment_with", "build"}
+         "experiment_with", "build", "cast"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
-                    world_map: WorldMap, graph=None) -> tuple[bool, str]:
+                    world_map: WorldMap, graph=None, magic=None) -> tuple[bool, str]:
     if not isinstance(action, dict) or "action" not in action:
         return False, "malformed action"
     verb = action["action"]
@@ -39,6 +40,21 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
         for req in spec.get("requires", []):
             if req not in agent.knowledge:
                 return False, f"needs to know {req} first"
+    if verb == "cast":
+        if magic is None:
+            return False, "no magic available"
+        name = action.get("spell", "")
+        if name not in agent.knowledge:
+            return False, f"does not know {name}"
+        spell = magic.spell(name)
+        if spell is None:
+            return False, f"no such spell {name}"
+        for attr, rank_name in spell.get("prereqs", {}).get("attribute_rank", {}).items():
+            need = magic.ranks.index(rank_name)
+            if agent.attr_rank.get(attr, 0) < need:
+                return False, f"{attr} rank too low"
+        if agent.mana < spell["mana_cost"]:
+            return False, "not enough mana"
     return True, ""
 
 
@@ -63,7 +79,7 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
     action = agent.current_action
     if action is None:
         return []
-    ok, why = validate_action(action, agent, state, world_map, graph)
+    ok, why = validate_action(action, agent, state, world_map, graph, magic)
     if not ok:
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
@@ -191,4 +207,22 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 built_by=agent.id, built_minute=state.sim_minutes))
         return _finish(agent, {"type": "built", "agent": agent.id,
                                "structure": action["structure"]})
+
+    if verb == "cast":
+        spell = magic.spell(action["spell"])
+        ca = agent.current_action
+        if "cast_until" not in ca:
+            ca["cast_until"] = m + magic.cast_minutes(spell, agent)
+            return []  # chanting
+        if m < ca["cast_until"]:
+            return []  # still chanting
+        agent.mana -= spell["mana_cost"]
+        events = apply_effect(spell["effect"], agent, state, world_map, settings, m)
+        ranked = magic.award_xp(agent, spell["attribute"], spell["xp_per_cast"])
+        magic.note_cast_mana(agent)
+        agent.current_action = None
+        events.append({"type": "cast", "agent": agent.id, "spell": spell["name"],
+                       "ranked_up": ranked})
+        return events
+
     return []
