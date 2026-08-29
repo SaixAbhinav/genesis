@@ -1,0 +1,60 @@
+import json
+from dataclasses import dataclass, field, asdict
+from pathlib import Path
+
+
+@dataclass
+class Needs:
+    hunger: float = 100.0
+    energy: float = 100.0
+    warmth: float = 100.0
+
+
+@dataclass
+class Agent:
+    id: str
+    name: str
+    x: int
+    y: int
+    needs: Needs = field(default_factory=Needs)
+    inventory: dict[str, int] = field(default_factory=dict)
+    status: str = "active"  # active | sleeping | collapsed
+    persona: str = ""
+    brain: str = ""
+    knowledge: list[str] = field(default_factory=list)
+    current_action: dict | None = None
+    collapse_until: int = 0
+
+
+@dataclass
+class Resource:
+    type: str
+    x: int
+    y: int
+    qty: int
+
+
+@dataclass
+class WorldState:
+    sim_minutes: int
+    seed: int
+    agents: list[Agent] = field(default_factory=list)
+    resources: list[Resource] = field(default_factory=list)
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
+
+    @classmethod
+    def from_json(cls, s: str) -> "WorldState":
+        d = json.loads(s)
+        agents = [
+            Agent(**{**a, "needs": Needs(**a["needs"])}) for a in d["agents"]
+        ]
+        resources = [Resource(**r) for r in d["resources"]]
+        return cls(sim_minutes=d["sim_minutes"], seed=d["seed"],
+                   agents=agents, resources=resources)
+
+
+def load_agents(path: str | Path) -> list[Agent]:
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    return [Agent(**a) for a in d["agents"]]
