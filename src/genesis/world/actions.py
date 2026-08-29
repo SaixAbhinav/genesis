@@ -104,18 +104,23 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         if r is None:
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "nothing here"})
-        r.qty -= 1
-        agent.inventory[rtype] = agent.inventory.get(rtype, 0) + 1
+        yield_n = 1 + (settings["stone_tools_gather_bonus"]
+                       if "stone_tools" in agent.knowledge else 0)
+        yield_n = min(yield_n, r.qty)
+        r.qty -= yield_n
+        agent.inventory[rtype] = agent.inventory.get(rtype, 0) + yield_n
         return _finish(agent, {"type": "gathered", "agent": agent.id,
-                               "resource": rtype, "qty": 1})
+                               "resource": rtype, "qty": yield_n})
 
     if verb == "eat":
         if agent.inventory.get("berries", 0) < 1:
             return _finish(agent, {"type": "eat_failed", "agent": agent.id,
                                    "reason": "no food carried"})
         agent.inventory["berries"] -= 1
-        agent.needs.hunger = min(
-            100.0, agent.needs.hunger + settings["eat_berries_hunger_restore"])
+        restore = settings["eat_berries_hunger_restore"]
+        if "cooked_food" in agent.knowledge:
+            restore += settings["eat_cooked_hunger_bonus"]
+        agent.needs.hunger = min(100.0, agent.needs.hunger + restore)
         return _finish(agent, {"type": "ate", "agent": agent.id})
 
     if verb == "drink":
