@@ -18,12 +18,21 @@ class Agent:
     y: int
     needs: Needs = field(default_factory=Needs)
     inventory: dict[str, int] = field(default_factory=dict)
-    status: str = "active"  # active | sleeping | collapsed
+    status: str = "active"  # active | sleeping | collapsed | dead
     persona: str = ""
     brain: str = ""
     knowledge: list[str] = field(default_factory=list)
     current_action: dict | None = None
     collapse_until: int = 0
+    # Plan 3 — Abyss & magic
+    layer: int = 0
+    strain: float = 0.0
+    mana: float = 0.0
+    mana_max: float = 0.0
+    attr_rank: dict[str, int] = field(default_factory=dict)
+    attr_xp: dict[str, float] = field(default_factory=dict)
+    purified_until: int = 0
+    negate_fall_until: int = 0
 
 
 @dataclass
@@ -32,6 +41,7 @@ class Resource:
     x: int
     y: int
     qty: int
+    layer: int = 0
 
 
 @dataclass
