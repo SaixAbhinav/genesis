@@ -2,7 +2,7 @@
 from genesis.world.engine import Engine
 from genesis.world.grid import WorldMap
 from genesis.world.magic import MagicBook
-from genesis.world.state import Agent, Resource, WorldState
+from genesis.world.state import Agent, WorldState
 
 
 def _book():
@@ -36,24 +36,34 @@ LAYERS = [
 
 
 def test_well_ranked_agent_survives_the_climb():
-    # Scripted: an agent with a strong heal and mana returns from L2 without dying.
-    a = Agent(id="hero", name="Reg", x=1, y=1, layer=2, strain=45.0,
+    # Scripted: an agent ascends from L2, which pushes strain to 65 (>= lethal 60).
+    # A heal then reduces strain to 25 (< lethal), so when energy crashes,
+    # the agent collapses (survives) rather than dies.
+    # If reduce_strain were a no-op, strain would stay 65 and the crash would kill.
+    a = Agent(id="hero", name="Reg", x=1, y=1, layer=2, strain=20.0,
               mana=50.0, mana_max=50.0, knowledge=["minor_heal"],
               attr_rank={"healing": 1})
-    a.needs.energy = 100.0
+    a.needs.energy = 40.0
     st = WorldState(0, 7, [a])
-    settings = {**BASE, "layers": LAYERS}
+    settings = {**BASE, "layers": LAYERS, "energy_decay_per_min": 10.0}
     eng = Engine(st, settings=settings, maps=MAPS, layers=LAYERS, magic=_book())
-    # Heal then ascend twice; assert never dead.
-    a.current_action = {"action": "cast", "spell": "minor_heal"}
-    eng.advance(2)
+
+    # Tick 1: Ascend L2->L1, strain 20+45=65 (>= lethal 60)
     a.current_action = {"action": "ascend"}
     eng.advance(1)
+    assert a.layer == 1 and a.strain == 65.0 and a.status == "active"
+
+    # Ticks 2-3: Heal (cast takes 2 ticks), strain 65-40=25 (< lethal 60)
     a.current_action = {"action": "cast", "spell": "minor_heal"}
     eng.advance(2)
-    a.current_action = {"action": "ascend"}
+    assert a.strain == 25.0 and a.status == "active"
+
+    # Tick 4: Energy crashes (40->30->20->10->0 over 4 ticks)
+    # With strain 25 < lethal, agent collapses (survives) not dies
     eng.advance(1)
-    assert a.status != "dead" and a.layer == 0
+
+    # Test assertion: agent survived the energy crash
+    assert a.status != "dead"
 
 
 def test_under_ranked_agent_dies_on_the_climb():
