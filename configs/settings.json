@@ -1,0 +1,18 @@
+{
+  "minutes_per_day": 1440,
+  "day_start_minute": 360,
+  "day_end_minute": 1200,
+  "hunger_decay_per_min": 0.07,
+  "energy_decay_per_min": 0.06,
+  "energy_regen_sleeping_per_min": 0.35,
+  "warmth_decay_night_per_min": 0.25,
+  "warmth_decay_night_sleeping_per_min": 0.12,
+  "warmth_regen_day_per_min": 0.5,
+  "eat_berries_hunger_restore": 30.0,
+  "drink_energy_restore": 5.0,
+  "collapse_duration_min": 60,
+  "collapse_recover_need_value": 25.0,
+  "collapse_recover_energy_value": 40.0,
+  "wake_energy_threshold": 95.0,
+  "morning_wake_min_energy": 50.0
+}
