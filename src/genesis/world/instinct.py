@@ -6,7 +6,7 @@ from genesis.world.state import Agent, WorldState
 def _nearest_resource(agent: Agent, state: WorldState, rtype: str):
     best, best_d = None, None
     for r in state.resources:
-        if r.type == rtype and r.qty > 0:
+        if r.type == rtype and r.qty > 0 and r.layer == agent.layer:
             d = abs(r.x - agent.x) + abs(r.y - agent.y)
             if best_d is None or d < best_d:
                 best, best_d = r, d

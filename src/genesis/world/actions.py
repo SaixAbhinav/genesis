@@ -7,7 +7,7 @@ from genesis.world.state import Agent, WorldState
 from genesis.world.structures import Structure
 
 VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
-         "experiment_with", "build", "cast", "descend", "ascend"}
+         "experiment_with", "build", "cast", "descend", "ascend", "harvest_relic"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
@@ -76,10 +76,11 @@ def _tiles_near(agent: Agent, world_map: WorldMap) -> list[tuple[int, int]]:
     return [(agent.x, agent.y)] + world_map.neighbors4(agent.x, agent.y)
 
 
-def _find_resource(state: WorldState, rtype: str, tiles: list[tuple[int, int]]):
+def _find_resource(state: WorldState, rtype: str, tiles: list[tuple[int, int]], agent: Agent = None):
     for r in state.resources:
         if r.type == rtype and r.qty > 0 and (r.x, r.y) in tiles:
-            return r
+            if agent is None or r.layer == agent.layer:
+                return r
     return None
 
 
@@ -143,7 +144,7 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         if rtype == "water":
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "drink water instead"})
-        r = _find_resource(state, rtype, _tiles_near(agent, world_map))
+        r = _find_resource(state, rtype, _tiles_near(agent, world_map), agent)
         if r is None:
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "nothing here"})
@@ -282,5 +283,23 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         return _finish(agent, {"type": "ascended", "agent": agent.id,
                                "layer": agent.layer, "strain": agent.strain,
                                "curse_from": left})
+
+    if verb == "harvest_relic":
+        tiles = _tiles_near(agent, world_map)
+        relic = next((r for r in state.resources
+                      if r.type.startswith("relic") and r.qty > 0
+                      and r.layer == agent.layer and (r.x, r.y) in tiles), None)
+        if relic is None:
+            return _finish(agent, {"type": "harvest_failed", "agent": agent.id,
+                                   "reason": "no relic here"})
+        payload = (settings or {}).get("relics", {}).get(relic.type, {})
+        relic.qty -= 1
+        agent.inventory["relic_value"] = (agent.inventory.get("relic_value", 0)
+                                          + int(payload.get("value", 0)))
+        if payload.get("mana_max"):
+            agent.mana_max += float(payload["mana_max"])
+        return _finish(agent, {"type": "relic_taken", "agent": agent.id,
+                               "relic": relic.type,
+                               "value": payload.get("value", 0)})
 
     return []
