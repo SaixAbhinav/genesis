@@ -1,3 +1,4 @@
+from genesis.world.abyss import action_fails
 from genesis.world.effects import apply_effect
 from genesis.world.grid import WorldMap
 from genesis.world.needs import is_daytime
@@ -87,7 +88,7 @@ def _finish(agent: Agent, event: dict) -> list[dict]:
 
 
 def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                settings: dict, graph=None, magic=None) -> list[dict]:
+                settings: dict, graph=None, magic=None, rng=None) -> list[dict]:
     action = agent.current_action
     if action is None:
         return []
@@ -96,6 +97,15 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
     verb = action["action"]
+
+    if rng is not None and verb in ("move_to", "gather", "experiment_with", "build",
+                                    "descend", "ascend", "harvest_relic"):
+        layers = settings.get("layers", []) if settings else []
+        if layers and 0 <= agent.layer < len(layers):
+            if action_fails(agent, layers[agent.layer], rng):
+                return _finish(agent, {"type": "action_fail", "agent": agent.id,
+                                       "cause": "curse"})
+
     m = state.sim_minutes
 
     if verb == "move_to":

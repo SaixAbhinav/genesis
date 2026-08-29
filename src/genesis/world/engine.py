@@ -41,7 +41,7 @@ class Engine:
                     agent, self.state, wm, self.settings, self.rng,
                     self.graph, self.magic)
             events += step_action(agent, self.state, wm,
-                                  self.settings, self.graph, self.magic)
+                                  self.settings, self.graph, self.magic, self.rng)
         for ev in events:
             ev.setdefault("minute", minute)
         self.state.sim_minutes += 1
