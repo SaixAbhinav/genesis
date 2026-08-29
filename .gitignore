@@ -1,0 +1,7 @@
+# Local-only files
+CLAUDE.md
+.claude/
+.superpowers/
+.env
+__pycache__/
+.venv/
