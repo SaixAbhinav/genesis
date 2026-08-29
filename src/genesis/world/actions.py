@@ -2,11 +2,12 @@ from genesis.world.grid import WorldMap
 from genesis.world.needs import is_daytime
 from genesis.world.state import Agent, WorldState
 
-VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe"}
+VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
+         "experiment_with", "build"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
-                    world_map: WorldMap) -> tuple[bool, str]:
+                    world_map: WorldMap, graph=None) -> tuple[bool, str]:
     if not isinstance(action, dict) or "action" not in action:
         return False, "malformed action"
     verb = action["action"]
@@ -19,6 +20,15 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
             return False, "target tile is not walkable"
     if verb == "gather" and not isinstance(action.get("resource"), str):
         return False, "gather needs a resource name"
+    if verb == "experiment_with":
+        if graph is None:
+            return False, "no discovery graph available"
+        items = action.get("items")
+        if not isinstance(items, list) or not items:
+            return False, "experiment_with needs a non-empty items list"
+        for it in items:
+            if agent.inventory.get(it, 0) < 1:
+                return False, f"not holding {it}"
     return True, ""
 
 
@@ -39,11 +49,11 @@ def _finish(agent: Agent, event: dict) -> list[dict]:
 
 
 def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                settings: dict) -> list[dict]:
+                settings: dict, graph=None) -> list[dict]:
     action = agent.current_action
     if action is None:
         return []
-    ok, why = validate_action(action, agent, state, world_map)
+    ok, why = validate_action(action, agent, state, world_map, graph)
     if not ok:
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
@@ -126,4 +136,16 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         return _finish(agent, {"type": "observed", "agent": agent.id,
                                "terrain": world_map.terrain(agent.x, agent.y),
                                "seen_agents": seen})
+
+    if verb == "experiment_with":
+        result = graph.match(action["items"], agent.knowledge)
+        if result is None:
+            return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
+                                   "items": action["items"]})
+        if result in agent.knowledge:
+            return _finish(agent, {"type": "experiment_known", "agent": agent.id,
+                                   "discovery": result})
+        agent.knowledge.append(result)
+        return _finish(agent, {"type": "discovered", "agent": agent.id,
+                               "discovery": result})
     return []
