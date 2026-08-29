@@ -3,6 +3,7 @@ import random
 from genesis.world.actions import step_action
 from genesis.world.discovery import DiscoveryGraph
 from genesis.world.grid import WorldMap
+from genesis.world.hazards import miasma_tick, creature_damage
 from genesis.world.instinct import choose_action
 from genesis.world.needs import tick_needs
 from genesis.world.state import WorldState
@@ -36,6 +37,10 @@ class Engine:
             wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
             events += tick_needs(agent, minute, self.settings, near_warmth=near)
+            if self.layers and 0 <= agent.layer < len(self.layers):
+                lc = self.layers[agent.layer]
+                events += miasma_tick(agent, lc, minute)
+                events += creature_damage(agent, lc)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 agent.current_action = choose_action(
                     agent, self.state, wm, self.settings, self.rng,

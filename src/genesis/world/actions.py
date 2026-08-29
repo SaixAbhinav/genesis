@@ -1,6 +1,7 @@
 from genesis.world.abyss import action_fails
 from genesis.world.effects import apply_effect
 from genesis.world.grid import WorldMap
+from genesis.world.hazards import fall_check
 from genesis.world.needs import is_daytime
 from genesis.world.state import Agent, WorldState
 from genesis.world.structures import Structure
@@ -126,6 +127,10 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 agent.x, agent.y = step
                 events = [{"type": "moved", "agent": agent.id,
                            "x": agent.x, "y": agent.y}]
+                if rng is not None and settings is not None:
+                    layers = settings.get("layers", [])
+                    if layers and 0 <= agent.layer < len(layers):
+                        events += fall_check(agent, world_map, layers[agent.layer], m, rng)
                 if (agent.x, agent.y) == (tx, ty):
                     agent.current_action = None
                     events.append({"type": "arrived", "agent": agent.id,
