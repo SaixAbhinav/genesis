@@ -1,0 +1,8 @@
+{
+  "agents": [
+    {"id": "ash", "name": "Ash", "x": 9, "y": 5, "persona": "curious and bold", "brain": ""},
+    {"id": "bramble", "name": "Bramble", "x": 6, "y": 3, "persona": "cautious and practical", "brain": ""},
+    {"id": "cinder", "name": "Cinder", "x": 5, "y": 7, "persona": "social and scatterbrained", "brain": ""},
+    {"id": "dew", "name": "Dew", "x": 8, "y": 10, "persona": "quiet and observant", "brain": ""}
+  ]
+}
