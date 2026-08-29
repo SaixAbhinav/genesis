@@ -6,7 +6,9 @@ LLM (Plan 3); the world itself is a deterministic engine.
 
 ## Status
 
-Plan 1 (world engine core) — rule-driven agents, needs, day/night, persistence.
+Plan 2 (discovery, crafting & building) — agents experiment to discover fire,
+stone tools, and cooked food; build campfires and huts; and gain real payoffs
+(better yields, warm nights). Still rule-driven; LLM minds come next.
 
 ## Run
 

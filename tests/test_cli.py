@@ -17,3 +17,14 @@ def test_agents_do_not_stay_collapsed_forever(tmp_path):
     summary = run_sim(days=3, db_path=tmp_path / "w.db", seed=7)
     collapsed_final = [a for a in summary["agents"] if a["status"] == "collapsed"]
     assert len(collapsed_final) < 4     # world did not dead-end
+
+
+def test_discoveries_and_structures_emerge(tmp_path):
+    summary = run_sim(days=2, db_path=tmp_path / "w.db", seed=42)
+    # someone should have discovered fire and stone_tools from seeded materials
+    all_known = {d for known in summary["discoveries"].values() for d in known}
+    assert "fire" in all_known
+    assert "stone_tools" in all_known
+    # and at least one structure should have been built
+    assert len(summary["structures"]) >= 1
+    assert summary["structures"][0]["type"] in ("campfire", "hut")

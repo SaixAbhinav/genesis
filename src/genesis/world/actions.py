@@ -1,12 +1,14 @@
 from genesis.world.grid import WorldMap
 from genesis.world.needs import is_daytime
 from genesis.world.state import Agent, WorldState
+from genesis.world.structures import Structure
 
-VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe"}
+VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
+         "experiment_with", "build"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
-                    world_map: WorldMap) -> tuple[bool, str]:
+                    world_map: WorldMap, graph=None) -> tuple[bool, str]:
     if not isinstance(action, dict) or "action" not in action:
         return False, "malformed action"
     verb = action["action"]
@@ -19,6 +21,24 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
             return False, "target tile is not walkable"
     if verb == "gather" and not isinstance(action.get("resource"), str):
         return False, "gather needs a resource name"
+    if verb == "experiment_with":
+        if graph is None:
+            return False, "no discovery graph available"
+        items = action.get("items")
+        if not isinstance(items, list) or not items:
+            return False, "experiment_with needs a non-empty items list"
+        for it in items:
+            if agent.inventory.get(it, 0) < 1:
+                return False, f"not holding {it}"
+    if verb == "build":
+        if graph is None:
+            return False, "no discovery graph available"
+        spec = graph.buildable(action.get("structure", ""))
+        if spec is None:
+            return False, f"cannot build '{action.get('structure')}'"
+        for req in spec.get("requires", []):
+            if req not in agent.knowledge:
+                return False, f"needs to know {req} first"
     return True, ""
 
 
@@ -39,11 +59,11 @@ def _finish(agent: Agent, event: dict) -> list[dict]:
 
 
 def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
-                settings: dict) -> list[dict]:
+                settings: dict, graph=None) -> list[dict]:
     action = agent.current_action
     if action is None:
         return []
-    ok, why = validate_action(action, agent, state, world_map)
+    ok, why = validate_action(action, agent, state, world_map, graph)
     if not ok:
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
@@ -84,18 +104,23 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         if r is None:
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "nothing here"})
-        r.qty -= 1
-        agent.inventory[rtype] = agent.inventory.get(rtype, 0) + 1
+        yield_n = 1 + (settings["stone_tools_gather_bonus"]
+                       if "stone_tools" in agent.knowledge else 0)
+        yield_n = min(yield_n, r.qty)
+        r.qty -= yield_n
+        agent.inventory[rtype] = agent.inventory.get(rtype, 0) + yield_n
         return _finish(agent, {"type": "gathered", "agent": agent.id,
-                               "resource": rtype, "qty": 1})
+                               "resource": rtype, "qty": yield_n})
 
     if verb == "eat":
         if agent.inventory.get("berries", 0) < 1:
             return _finish(agent, {"type": "eat_failed", "agent": agent.id,
                                    "reason": "no food carried"})
         agent.inventory["berries"] -= 1
-        agent.needs.hunger = min(
-            100.0, agent.needs.hunger + settings["eat_berries_hunger_restore"])
+        restore = settings["eat_berries_hunger_restore"]
+        if "cooked_food" in agent.knowledge:
+            restore += settings["eat_cooked_hunger_bonus"]
+        agent.needs.hunger = min(100.0, agent.needs.hunger + restore)
         return _finish(agent, {"type": "ate", "agent": agent.id})
 
     if verb == "drink":
@@ -126,4 +151,44 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         return _finish(agent, {"type": "observed", "agent": agent.id,
                                "terrain": world_map.terrain(agent.x, agent.y),
                                "seen_agents": seen})
+
+    if verb == "experiment_with":
+        result = graph.match(action["items"], agent.knowledge)
+        if result is None:
+            return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
+                                   "items": action["items"]})
+        if result in agent.knowledge:
+            return _finish(agent, {"type": "experiment_known", "agent": agent.id,
+                                   "discovery": result})
+        agent.knowledge.append(result)
+        return _finish(agent, {"type": "discovered", "agent": agent.id,
+                               "discovery": result})
+
+    if verb == "build":
+        spec = graph.buildable(action["structure"])
+        materials = spec["materials"]
+        if any(agent.inventory.get(m, 0) < n for m, n in materials.items()):
+            return _finish(agent, {"type": "build_failed", "agent": agent.id,
+                                   "structure": action["structure"],
+                                   "reason": "missing materials"})
+        if not spec.get("carried"):
+            if world_map.terrain(agent.x, agent.y) not in spec.get("terrain", []):
+                return _finish(agent, {"type": "build_failed", "agent": agent.id,
+                                       "structure": action["structure"],
+                                       "reason": "wrong terrain"})
+            if any((s.x, s.y) == (agent.x, agent.y) for s in state.structures):
+                return _finish(agent, {"type": "build_failed", "agent": agent.id,
+                                       "structure": action["structure"],
+                                       "reason": "tile occupied"})
+        for m, n in materials.items():
+            agent.inventory[m] -= n
+        if spec.get("carried"):
+            agent.inventory[action["structure"]] = \
+                agent.inventory.get(action["structure"], 0) + 1
+        else:
+            state.structures.append(Structure(
+                type=action["structure"], x=agent.x, y=agent.y,
+                built_by=agent.id, built_minute=state.sim_minutes))
+        return _finish(agent, {"type": "built", "agent": agent.id,
+                               "structure": action["structure"]})
     return []

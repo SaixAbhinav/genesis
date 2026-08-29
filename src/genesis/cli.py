@@ -39,6 +39,9 @@ def run_sim(days: float, db_path: str | Path, seed: int = 42) -> dict:
             "warmth": round(a.needs.warmth, 1),
             "status": a.status, "inventory": a.inventory,
         } for a in state.agents],
+        "discoveries": {a.name: list(a.knowledge) for a in state.agents},
+        "structures": [{"type": s.type, "x": s.x, "y": s.y}
+                       for s in state.structures],
     }
 
 

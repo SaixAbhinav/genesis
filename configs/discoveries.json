@@ -1,0 +1,14 @@
+{
+  "recipes": [
+    {"items": ["flint", "wood"], "requires": [], "result": "fire"},
+    {"items": ["stone", "flint"], "requires": [], "result": "stone_tools"},
+    {"items": ["berries"], "requires": ["fire"], "result": "cooked_food"}
+  ],
+  "buildables": {
+    "campfire": {"requires": ["fire"], "materials": {"wood": 2},
+                 "terrain": ["grass", "sand", "forest", "rock", "marsh"]},
+    "torch": {"requires": ["fire"], "materials": {"wood": 1}, "carried": true},
+    "hut": {"requires": ["stone_tools"], "materials": {"wood": 4, "stone": 2},
+            "terrain": ["grass", "sand"]}
+  }
+}

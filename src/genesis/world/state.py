@@ -40,19 +40,22 @@ class WorldState:
     seed: int
     agents: list[Agent] = field(default_factory=list)
     resources: list[Resource] = field(default_factory=list)
+    structures: list = field(default_factory=list)  # list[Structure]
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
 
     @classmethod
     def from_json(cls, s: str) -> "WorldState":
+        from genesis.world.structures import Structure
         d = json.loads(s)
         agents = [
             Agent(**{**a, "needs": Needs(**a["needs"])}) for a in d["agents"]
         ]
         resources = [Resource(**r) for r in d["resources"]]
+        structures = [Structure(**s) for s in d.get("structures", [])]
         return cls(sim_minutes=d["sim_minutes"], seed=d["seed"],
-                   agents=agents, resources=resources)
+                   agents=agents, resources=resources, structures=structures)
 
 
 def load_agents(path: str | Path) -> list[Agent]:

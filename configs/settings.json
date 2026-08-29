@@ -1,5 +1,6 @@
 {
   "minutes_per_day": 1440,
+  "campfire_warmth_radius": 2,
   "day_start_minute": 360,
   "day_end_minute": 1200,
   "hunger_decay_per_min": 0.07,
@@ -8,7 +9,10 @@
   "warmth_decay_night_per_min": 0.25,
   "warmth_decay_night_sleeping_per_min": 0.12,
   "warmth_regen_day_per_min": 0.5,
+  "warmth_regen_near_fire_per_min": 0.4,
   "eat_berries_hunger_restore": 30.0,
+  "stone_tools_gather_bonus": 1,
+  "eat_cooked_hunger_bonus": 15.0,
   "drink_energy_restore": 5.0,
   "collapse_duration_min": 60,
   "collapse_recover_need_value": 25.0,
