@@ -1,0 +1,16 @@
+{
+  "rows": [
+    "CFFFFFFFFF",
+    "FFFFFFFFFF",
+    "FFFFWWFFFF",
+    "FFFFWWFFFF",
+    "FFFFFFFFFF",
+    "FFFFFFFFFF",
+    "FFFFFFFFFF",
+    "FFFFFFFFCF"
+  ],
+  "resources": [
+    {"type": "arcane_moss", "x": 5, "y": 1, "qty": 10},
+    {"type": "berries", "x": 3, "y": 4, "qty": 30}
+  ]
+}

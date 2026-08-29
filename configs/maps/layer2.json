@@ -1,0 +1,17 @@
+{
+  "rows": [
+    "CRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR",
+    "RRRRRRRRRR"
+  ],
+  "resources": [
+    {"type": "stone", "x": 4, "y": 2, "qty": 50},
+    {"type": "quarry_dust", "x": 2, "y": 6, "qty": 5},
+    {"type": "feather_charm", "x": 7, "y": 3, "qty": 5}
+  ]
+}
