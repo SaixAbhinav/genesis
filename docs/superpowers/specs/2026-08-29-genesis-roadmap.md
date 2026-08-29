@@ -137,6 +137,31 @@ discovery already speaks `{name, requires, effect, prereqs}`, the generative eng
 simply coins new records in the same shape — additive, not a rewrite. Everything else
 about Plan 8 is deferred until LLM minds exist and can be reasoned against.
 
+## Plan 3 — build status (2026-08-29)
+
+**Built** on branch `feat/abyss-magic` (14 tasks, subagent-driven; 113 tests passing;
+whole-branch review = merge-ready, no correctness/determinism/backward-compat blockers).
+The depth axis, Curse/strain, curse-only permadeath, magic (mana/ranks/spells as typed
+effect records), 3 layers with hazards + relics, and the instinct heal-reflex all work
+and interlock end-to-end.
+
+**Known limitations / fast-follows (surfaced by final review):**
+- **Mana never regenerates.** `cast` only spends mana; nothing refills it, so the core
+  survival loop is currently *one-shot* (an agent can heal a couple of times, then the
+  curse counter is gone permanently). `mana_max`-by-depletion growth has no payoff until
+  this lands. **#1 follow-up** — natural fit: regen on sleep/rest, or a small passive
+  per-tick refill toward `mana_max`. Plan 3 is not demoable without it.
+- **The instinct policy does not autonomously drive the Abyss loop.** Rule agents only
+  *react* with a heal; they never choose `descend`/`ascend`/`harvest_relic`/`purify`, and
+  magic *discovery* isn't reachable autonomously (the experiment branch gates on the
+  crafting graph). This is a **deliberate deferral to Plan 4 (LLM minds)** — the dive is
+  currently validated only by hand-scripted integration scenarios, not emergent behaviour.
+- **Cohesion debt (safe cleanup pass):** three duplicate `_clamp` helpers; dead
+  `mana_depletion_frac`/`mana_growth_step` copies in `settings.json` (read from
+  `magic.json`); vestigial `Engine(layers=)`, `fall_check(rng=)`, unused `_attack`
+  handler; `layers.json` map paths are cwd-relative (latent bug for non-default
+  `config_dir`); minor type-hint/sentinel style nits.
+
 ## Open questions to revisit
 
 - How do agent-authored discoveries get *sandboxed and verified* before entering canon?
