@@ -23,8 +23,8 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
     if verb == "gather" and not isinstance(action.get("resource"), str):
         return False, "gather needs a resource name"
     if verb == "experiment_with":
-        if graph is None:
-            return False, "no discovery graph available"
+        if graph is None and magic is None:
+            return False, "no discovery graph or magic available"
         items = action.get("items")
         if not isinstance(items, list) or not items:
             return False, "experiment_with needs a non-empty items list"
@@ -169,7 +169,19 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                                "seen_agents": seen})
 
     if verb == "experiment_with":
-        result = graph.match(action["items"], agent.knowledge)
+        if graph is not None:
+            result = graph.match(action["items"], agent.knowledge)
+        else:
+            result = None
+        if result is None and magic is not None:
+            result = magic.discoverable(action["items"], agent.knowledge)
+            if result is not None:
+                agent.knowledge.append(result)
+                spell = magic.spell(result)
+                agent.attr_rank.setdefault(spell["attribute"], 0)
+                agent.attr_xp.setdefault(spell["attribute"], 0.0)
+                return _finish(agent, {"type": "discovered", "agent": agent.id,
+                                       "discovery": result})
         if result is None:
             return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
                                    "items": action["items"]})

@@ -40,6 +40,15 @@ class MagicBook:
         agent.attr_rank[attribute] = rank
         return ranked_up
 
+    def discoverable(self, items, knowledge):
+        have = set(items)
+        for name, spell in self.spells.items():
+            if name in knowledge:
+                continue
+            if all(req in have for req in spell.get("requires", [])) and spell["requires"]:
+                return name
+        return None
+
     def note_cast_mana(self, agent):
         frac = self.params.get("mana_depletion_frac", 0.15)
         step = self.params.get("mana_growth_step", 5.0)
