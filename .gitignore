@@ -5,3 +5,5 @@ CLAUDE.md
 .env
 __pycache__/
 .venv/
+*.db
+.pytest_cache/
