@@ -10,7 +10,8 @@ def _clamp(v: float) -> float:
     return max(0.0, min(100.0, v))
 
 
-def tick_needs(agent: Agent, sim_minutes: int, settings: dict) -> list[dict]:
+def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
+               near_warmth: bool = False) -> list[dict]:
     events: list[dict] = []
     n = agent.needs
 
@@ -33,6 +34,8 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict) -> list[dict]:
         n.energy = _clamp(n.energy - settings["energy_decay_per_min"])
     if day:
         n.warmth = _clamp(n.warmth + settings["warmth_regen_day_per_min"])
+    elif near_warmth:
+        n.warmth = _clamp(n.warmth + settings["warmth_regen_near_fire_per_min"])
     else:
         rate = (settings["warmth_decay_night_sleeping_per_min"]
                 if agent.status == "sleeping"

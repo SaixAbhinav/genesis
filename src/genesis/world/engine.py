@@ -5,6 +5,7 @@ from genesis.world.grid import WorldMap
 from genesis.world.instinct import choose_action
 from genesis.world.needs import tick_needs
 from genesis.world.state import WorldState
+from genesis.world.structures import has_warmth_source
 
 
 class Engine:
@@ -18,7 +19,8 @@ class Engine:
         events: list[dict] = []
         minute = self.state.sim_minutes
         for agent in self.state.agents:
-            events += tick_needs(agent, minute, self.settings)
+            near = has_warmth_source(agent, self.state, self.settings)
+            events += tick_needs(agent, minute, self.settings, near_warmth=near)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 agent.current_action = choose_action(
                     agent, self.state, self.world_map, self.settings, self.rng)
