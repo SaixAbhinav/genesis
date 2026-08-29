@@ -50,6 +50,13 @@ def choose_action(agent: Agent, state: WorldState, world_map: WorldMap,
                   settings: dict, rng, graph=None, magic=None) -> dict | None:
     if agent.status != "active":
         return None
+    # --- Abyss survival: heal off dangerous strain ---
+    if magic is not None and agent.strain >= settings.get("strain_heal_threshold", 1e9):
+        for name in agent.knowledge:
+            spell = magic.spell(name)
+            if (spell and spell["effect"]["type"] == "reduce_strain"
+                    and agent.mana >= spell["mana_cost"]):
+                return {"action": "cast", "spell": name}
     if not is_daytime(state.sim_minutes, settings):
         return {"action": "sleep"}
     if agent.needs.hunger < 40:
