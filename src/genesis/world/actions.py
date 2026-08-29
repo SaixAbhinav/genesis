@@ -5,11 +5,11 @@ from genesis.world.state import Agent, WorldState
 from genesis.world.structures import Structure
 
 VERBS = {"move_to", "gather", "eat", "drink", "sleep", "observe",
-         "experiment_with", "build", "cast"}
+         "experiment_with", "build", "cast", "descend", "ascend"}
 
 
 def validate_action(action: dict, agent: Agent, state: WorldState,
-                    world_map: WorldMap, graph=None, magic=None) -> tuple[bool, str]:
+                    world_map: WorldMap, graph=None, magic=None, settings: dict = None) -> tuple[bool, str]:
     if not isinstance(action, dict) or "action" not in action:
         return False, "malformed action"
     verb = action["action"]
@@ -55,6 +55,18 @@ def validate_action(action: dict, agent: Agent, state: WorldState,
                 return False, f"{attr} rank too low"
         if agent.mana < spell["mana_cost"]:
             return False, "not enough mana"
+    if verb in ("descend", "ascend"):
+        layers = settings.get("layers", []) if settings else []
+        if not layers:
+            return False, "no layers configured"
+        link = layers[agent.layer].get("link", {})
+        tile = link.get(verb)
+        if tile is None or [agent.x, agent.y] != tile:
+            return False, f"not on a {verb} tile"
+        if verb == "descend" and agent.layer + 1 >= len(layers):
+            return False, "no deeper layer"
+        if verb == "ascend" and agent.layer == 0:
+            return False, "already at the top"
     return True, ""
 
 
@@ -79,7 +91,7 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
     action = agent.current_action
     if action is None:
         return []
-    ok, why = validate_action(action, agent, state, world_map, graph, magic)
+    ok, why = validate_action(action, agent, state, world_map, graph, magic, settings)
     if not ok:
         return _finish(agent, {"type": "action_rejected", "agent": agent.id,
                                "reason": why})
@@ -236,5 +248,24 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         events.append({"type": "cast", "agent": agent.id, "spell": spell["name"],
                        "ranked_up": ranked})
         return events
+
+    if verb == "descend":
+        layers = settings["layers"]
+        agent.layer += 1
+        ex, ey = layers[agent.layer]["link"]["entry_down"]
+        agent.x, agent.y = ex, ey
+        return _finish(agent, {"type": "descended", "agent": agent.id,
+                               "layer": agent.layer})
+
+    if verb == "ascend":
+        layers = settings["layers"]
+        left = agent.layer
+        agent.layer -= 1
+        ex, ey = layers[agent.layer]["link"]["entry_up"]
+        agent.x, agent.y = ex, ey
+        agent.strain += layers[left]["curse_strain"]
+        return _finish(agent, {"type": "ascended", "agent": agent.id,
+                               "layer": agent.layer, "strain": agent.strain,
+                               "curse_from": left})
 
     return []
