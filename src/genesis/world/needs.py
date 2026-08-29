@@ -46,9 +46,15 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
         n.warmth = _clamp(n.warmth - rate)
 
     if min(n.hunger, n.energy, n.warmth) <= 0:
-        agent.status = "collapsed"
-        agent.collapse_until = sim_minutes + settings["collapse_duration_min"]
-        agent.current_action = None
-        events.append({"type": "collapsed", "agent": agent.id,
-                       "minute": sim_minutes})
+        if agent.strain >= settings.get("strain_lethal_threshold", float("inf")):
+            agent.status = "dead"
+            agent.current_action = None
+            events.append({"type": "died", "agent": agent.id, "minute": sim_minutes,
+                           "cause": "curse"})
+        else:
+            agent.status = "collapsed"
+            agent.collapse_until = sim_minutes + settings["collapse_duration_min"]
+            agent.current_action = None
+            events.append({"type": "collapsed", "agent": agent.id,
+                           "minute": sim_minutes})
     return events
