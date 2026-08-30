@@ -30,3 +30,13 @@ def test_raises_after_two_invalid():
     p = StubProvider([{"choice": "fly"}, {"choice": "swim"}])
     with pytest.raises(BrainError):
         LLMBrain(p, "m").choose({}, AFFS)
+
+
+def test_prompt_does_not_duplicate_options_in_state():
+    from genesis.mind.llm_brain import _prompt
+    affs = [{"id": "eat", "label": "eat", "dir": "here", "dist": 0},
+            {"id": "sleep", "label": "sleep", "dir": "here", "dist": 0}]
+    ctx = {"persona": "curious", "options": affs}   # engine puts options in context
+    p = _prompt(ctx, affs)
+    assert '"options"' not in p          # not dumped inside the State JSON
+    assert p.count("- eat:") == 1        # listed exactly once, in Options
