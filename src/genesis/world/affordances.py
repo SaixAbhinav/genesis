@@ -38,6 +38,21 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                              "label": "experiment with what you're carrying",
                              "dir": "here", "dist": 0})
 
+    # build: known structures whose materials are fully held
+    if graph is not None:
+        for s in ("campfire", "hut"):
+            spec = graph.buildable(s)
+            if spec is None:
+                continue
+            if not all(req in agent.knowledge for req in spec.get("requires", [])):
+                continue
+            materials = spec.get("materials", {})
+            if not all(agent.inventory.get(m, 0) >= n for m, n in materials.items()):
+                continue
+            opts.append({"id": f"build:{s}", "verb": "build",
+                         "params": {"structure": s},
+                         "label": f"build a {s}", "dir": "here", "dist": 0})
+
     # sleep and observe are always available
     opts.append({"id": "sleep", "verb": "sleep", "params": {},
                  "label": "sleep to recover energy", "dir": "here", "dist": 0})

@@ -57,3 +57,28 @@ def test_no_experiment_when_result_already_known():
     st = WorldState(0, 1, [a])
     opts = affordances(a, st, WM, S, graph=g)
     assert not any(o["verb"] == "experiment_with" for o in opts)
+
+
+def test_offers_build_campfire_when_known_and_materials_held():
+    g = DiscoveryGraph(
+        recipes=[],
+        buildables={"campfire": {"materials": {"wood": 2}, "requires": ["fire"],
+                                 "terrain": ["grass"]}},
+    )
+    a = _agent(inventory={"wood": 2}, knowledge=["fire"])
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, graph=g)
+    assert any(o["id"] == "build:campfire" and o["verb"] == "build"
+              and o["params"]["structure"] == "campfire" for o in opts)
+
+
+def test_no_build_when_missing_materials_or_knowledge():
+    g = DiscoveryGraph(
+        recipes=[],
+        buildables={"campfire": {"materials": {"wood": 2}, "requires": ["fire"],
+                                 "terrain": ["grass"]}},
+    )
+    a = _agent(inventory={"wood": 1}, knowledge=["fire"])  # not enough wood
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, graph=g)
+    assert not any(o["verb"] == "build" for o in opts)
