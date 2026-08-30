@@ -129,3 +129,12 @@ def test_no_ascend_from_top_layer():
     settings = {**S, "layers": layers}
     opts = affordances(a, st, WM, settings)
     assert not any(o["verb"] == "ascend" for o in opts)
+
+
+def test_offers_harvest_relic_for_relic_resource_with_stable_id():
+    a = _agent()
+    st = WorldState(0, 1, [a], [Resource(type="relic:trinket", x=1, y=0, qty=1, layer=0)])
+    opts = affordances(a, st, WM, S)
+    relic = [o for o in opts if o["verb"] == "harvest_relic"]
+    assert relic and relic[0]["id"] == "harvest_relic:relic:trinket@(1,0,0)"
+    assert not any(o["verb"] == "gather" for o in opts)  # relics aren't plain-gathered

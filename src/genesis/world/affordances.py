@@ -17,14 +17,24 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
         opts.append({"id": "eat", "verb": "eat", "params": {},
                      "label": "eat berries you carry", "dir": "here", "dist": 0})
 
-    # gather any reachable resource on this layer
+    # gather any reachable resource on this layer (relics use harvest_relic instead)
     for r in state.resources:
-        if r.qty > 0 and r.layer == agent.layer:
+        if r.qty > 0 and r.layer == agent.layer and not r.type.startswith("relic:"):
             dx, dy = r.x - agent.x, r.y - agent.y
             opts.append({
                 "id": f"gather:{r.type}@({r.x},{r.y},{r.layer})",
                 "verb": "gather", "params": {"resource": r.type, "x": r.x, "y": r.y},
                 "label": f"gather {r.type}", "dir": _dir(dx, dy),
+                "dist": abs(dx) + abs(dy)})
+
+    # harvest_relic: relic resources on this layer
+    for r in state.resources:
+        if r.qty > 0 and r.layer == agent.layer and r.type.startswith("relic:"):
+            dx, dy = r.x - agent.x, r.y - agent.y
+            opts.append({
+                "id": f"harvest_relic:{r.type}@({r.x},{r.y},{r.layer})",
+                "verb": "harvest_relic", "params": {"resource": r.type, "x": r.x, "y": r.y},
+                "label": f"harvest {r.type}", "dir": _dir(dx, dy),
                 "dist": abs(dx) + abs(dy)})
 
     # experiment_with: combine held items toward an undiscovered recipe result
