@@ -131,6 +131,34 @@ def test_no_ascend_from_top_layer():
     assert not any(o["verb"] == "ascend" for o in opts)
 
 
+def _magic_with_rank_prereq():
+    return MagicBook.from_dict({
+        "attributes": ["fire"], "ranks": ["novice", "intermediate", "expert"],
+        "rank_xp": {"novice": 0, "intermediate": 50, "expert": 150},
+        "spells": [{"name": "flame_wall", "attribute": "fire", "mana_cost": 5.0,
+                   "effect": {"type": "noop"}, "base_cast_minutes": 1,
+                   "xp_per_cast": 1,
+                   "prereqs": {"attribute_rank": {"fire": "intermediate"}}}],
+        "params": {},
+    })
+
+
+def test_no_cast_when_attr_rank_below_prereq():
+    m = _magic_with_rank_prereq()
+    a = _agent(knowledge=["flame_wall"], mana=10.0, attr_rank={})  # rank 0 = novice
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, magic=m)
+    assert not any(o["verb"] == "cast" for o in opts)
+
+
+def test_offers_cast_when_attr_rank_meets_prereq():
+    m = _magic_with_rank_prereq()
+    a = _agent(knowledge=["flame_wall"], mana=10.0, attr_rank={"fire": 1})  # intermediate
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, magic=m)
+    assert any(o["id"] == "cast:flame_wall" and o["verb"] == "cast" for o in opts)
+
+
 def test_offers_harvest_relic_for_relic_resource_with_stable_id():
     a = _agent()
     st = WorldState(0, 1, [a], [Resource(type="relic:trinket", x=1, y=0, qty=1, layer=0)])

@@ -63,14 +63,19 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                          "params": {"structure": s},
                          "label": f"build a {s}", "dir": "here", "dist": 0})
 
-    # cast: known spells the agent can currently afford
+    # cast: known spells the agent can currently afford and is ranked for
     if magic is not None:
         for name in agent.knowledge:
             spell = magic.spell(name)
-            if spell is not None and agent.mana >= spell["mana_cost"]:
-                opts.append({"id": f"cast:{name}", "verb": "cast",
-                             "params": {"spell": name},
-                             "label": f"cast {name}", "dir": "here", "dist": 0})
+            if spell is None or agent.mana < spell["mana_cost"]:
+                continue
+            reqs = spell.get("prereqs", {}).get("attribute_rank", {})
+            if any(agent.attr_rank.get(attr, 0) < magic.ranks.index(rank_name)
+                  for attr, rank_name in reqs.items()):
+                continue
+            opts.append({"id": f"cast:{name}", "verb": "cast",
+                         "params": {"spell": name},
+                         "label": f"cast {name}", "dir": "here", "dist": 0})
 
     # descend / ascend: the layer-link tile, offered even if not yet reached
     layers = settings.get("layers", []) if settings else []
