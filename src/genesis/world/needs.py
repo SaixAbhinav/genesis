@@ -1,13 +1,10 @@
 from genesis.world.state import Agent
+from genesis.world.util import clamp as _clamp
 
 
 def is_daytime(sim_minutes: int, settings: dict) -> bool:
     m = sim_minutes % settings["minutes_per_day"]
     return settings["day_start_minute"] <= m < settings["day_end_minute"]
-
-
-def _clamp(v: float) -> float:
-    return max(0.0, min(100.0, v))
 
 
 def tick_needs(agent: Agent, sim_minutes: int, settings: dict,

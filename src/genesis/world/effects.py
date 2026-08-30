@@ -1,8 +1,5 @@
 from genesis.world.structures import Structure
-
-
-def _clamp(v):
-    return max(0.0, min(100.0, v))
+from genesis.world.util import clamp as _clamp
 
 
 def _reduce_strain(effect, agent, state, wm, settings, minute):
@@ -35,15 +32,10 @@ def _build_shelter(effect, agent, state, wm, settings, minute):
     return [{"type": "shaped", "agent": agent.id, "structure": effect.get("structure")}]
 
 
-def _attack(effect, agent, state, wm, settings, minute):
-    # Combat resolution lives in hazards.creature_encounter; here we just flag intent.
-    return [{"type": "attacked", "agent": agent.id, "power": effect.get("power", 0)}]
-
-
 _HANDLERS = {
     "reduce_strain": _reduce_strain, "warmth": _warmth,
     "clear_miasma": _clear_miasma, "negate_fall": _negate_fall,
-    "build_shelter": _build_shelter, "attack": _attack,
+    "build_shelter": _build_shelter,
 }
 
 

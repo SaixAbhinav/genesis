@@ -131,7 +131,7 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 if rng is not None and settings is not None:
                     layers = settings.get("layers", [])
                     if layers and 0 <= agent.layer < len(layers):
-                        events += fall_check(agent, world_map, layers[agent.layer], m, rng)
+                        events += fall_check(agent, world_map, layers[agent.layer], m)
                 if (agent.x, agent.y) == (tx, ty):
                     agent.current_action = None
                     events.append({"type": "arrived", "agent": agent.id,

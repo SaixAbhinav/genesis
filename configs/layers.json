@@ -3,7 +3,7 @@
     {
       "name": "The Edge",
       "depth_m": [0, 1350],
-      "map": "configs/maps/layer0.json",
+      "map": "maps/layer0.json",
       "curse_strain": 5,
       "link": {"descend": [12, 0], "entry_up": [12, 0]},
       "relics": [
@@ -13,7 +13,7 @@
     {
       "name": "Forest of Temptation",
       "depth_m": [1350, 2600],
-      "map": "configs/maps/layer1.json",
+      "map": "maps/layer1.json",
       "curse_strain": 20,
       "curse_band": [15, 50],
       "curse_fail_chance": 0.15,
@@ -30,7 +30,7 @@
     {
       "name": "Great Fault",
       "depth_m": [2600, 7000],
-      "map": "configs/maps/layer2.json",
+      "map": "maps/layer2.json",
       "curse_strain": 50,
       "curse_band": [50, 200],
       "curse_fail_chance": 0.25,

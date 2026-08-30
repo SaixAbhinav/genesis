@@ -16,7 +16,7 @@ from genesis.world.structures import has_warmth_source
 class Engine:
     def __init__(self, state: WorldState, world_map: WorldMap | None = None,
                  settings: dict | None = None, graph: DiscoveryGraph | None = None,
-                 maps: list[WorldMap] | None = None, layers: list | None = None,
+                 maps: list[WorldMap] | None = None,
                  magic: dict | None = None):
         self.state = state
         if maps is None:
@@ -25,7 +25,6 @@ class Engine:
         self.settings = settings
         self.rng = random.Random(state.seed)
         self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json")
-        self.layers = layers or []
         self.magic = magic
 
     @classmethod
@@ -50,9 +49,9 @@ class Engine:
         layers_out: list[dict] = []
 
         for i, layer in enumerate(layers_cfg):
-            map_path = layer["map"]
+            map_path = config_dir / layer["map"]
             maps.append(WorldMap.from_file(map_path))
-            map_data = json.loads(Path(map_path).read_text(encoding="utf-8"))
+            map_data = json.loads(map_path.read_text(encoding="utf-8"))
             for r in map_data.get("resources", []):
                 resources.append(Resource(type=r["type"], x=r["x"], y=r["y"],
                                           qty=r["qty"], layer=i))

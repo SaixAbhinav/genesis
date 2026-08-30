@@ -1,4 +1,3 @@
-import random
 from genesis.world.grid import WorldMap
 from genesis.world.hazards import miasma_tick, fall_check
 from genesis.world.state import Agent, WorldState
@@ -25,13 +24,13 @@ def test_miasma_blocked_by_purify_buff():
 
 def test_fall_on_cliff_without_wind_adds_strain():
     a = Agent(id="a", name="A", x=1, y=0, negate_fall_until=0)
-    evs = fall_check(a, WM, L2, minute=5, rng=random.Random(0))
+    evs = fall_check(a, WM, L2, minute=5)
     assert a.strain == 40.0 and any(e["type"] == "fell" for e in evs)
 
 
 def test_fall_prevented_by_wind_buff():
     a = Agent(id="a", name="A", x=1, y=0, negate_fall_until=10)
-    evs = fall_check(a, WM, L2, minute=5, rng=random.Random(0))
+    evs = fall_check(a, WM, L2, minute=5)
     assert a.strain == 0.0 and evs == []
 
 
