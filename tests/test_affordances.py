@@ -82,3 +82,30 @@ def test_no_build_when_missing_materials_or_knowledge():
     st = WorldState(0, 1, [a])
     opts = affordances(a, st, WM, S, graph=g)
     assert not any(o["verb"] == "build" for o in opts)
+
+
+def _magic():
+    return MagicBook.from_dict({
+        "attributes": ["fire"], "ranks": ["novice"], "rank_xp": {"novice": 0},
+        "spells": [{"name": "spark", "attribute": "fire", "mana_cost": 5.0,
+                   "effect": {"type": "noop"}, "base_cast_minutes": 1,
+                   "xp_per_cast": 1, "prereqs": {}}],
+        "params": {},
+    })
+
+
+def test_offers_cast_for_known_spell_with_enough_mana():
+    m = _magic()
+    a = _agent(knowledge=["spark"], mana=10.0)
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, magic=m)
+    assert any(o["id"] == "cast:spark" and o["verb"] == "cast"
+              and o["params"]["spell"] == "spark" for o in opts)
+
+
+def test_no_cast_when_not_enough_mana():
+    m = _magic()
+    a = _agent(knowledge=["spark"], mana=1.0)
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, magic=m)
+    assert not any(o["verb"] == "cast" for o in opts)
