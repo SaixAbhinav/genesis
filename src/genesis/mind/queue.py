@@ -1,3 +1,6 @@
+import queue as _q
+import threading
+import time
 from dataclasses import dataclass
 
 
@@ -39,3 +42,55 @@ class InlineQueue:
 
     def pop(self, agent_id: str) -> dict | None:
         return self._inbox.pop(agent_id, None)
+
+
+class ThreadedThinkQueue:
+    """Async queue: a worker thread resolves jobs off the sim loop.
+
+    A per-day request budget caps how many jobs may be submitted; at or over
+    budget, submit() is a no-op so the agent falls back to instinct.
+    """
+    def __init__(self, daily_budget: int):
+        self.daily_budget = daily_budget
+        self.requests_today = 0
+        self._jobs: _q.Queue = _q.Queue()
+        self._inbox: dict[str, dict] = {}
+        self._pending: set[str] = set()
+        self._lock = threading.Lock()
+        self._worker = threading.Thread(target=self._run, daemon=True)
+        self._worker.start()
+
+    def submit(self, job: DecisionJob, brain) -> None:
+        with self._lock:
+            if self.requests_today >= self.daily_budget:
+                return  # budget spent -> agent rides instinct
+            self.requests_today += 1
+            self._pending.add(job.agent_id)
+        self._jobs.put((job, brain))
+
+    def _run(self):
+        while True:
+            job, brain = self._jobs.get()
+            result = _resolve(job, brain)
+            with self._lock:
+                self._pending.discard(job.agent_id)
+                if result is not None:
+                    self._inbox[job.agent_id] = result
+            self._jobs.task_done()
+
+    def pending(self, agent_id: str) -> bool:
+        with self._lock:
+            return agent_id in self._pending
+
+    def pop(self, agent_id: str) -> dict | None:
+        with self._lock:
+            return self._inbox.pop(agent_id, None)
+
+    def wait_idle(self, timeout: float = 2.0) -> bool:
+        # test helper: block until the job queue drains
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._jobs.unfinished_tasks == 0:
+                return True
+            time.sleep(0.01)
+        return False

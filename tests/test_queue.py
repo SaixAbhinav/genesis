@@ -1,4 +1,4 @@
-from genesis.mind.queue import DecisionJob, InlineQueue
+from genesis.mind.queue import DecisionJob, InlineQueue, ThreadedThinkQueue
 from genesis.mind.brain import FakeBrain
 
 
@@ -19,3 +19,19 @@ def test_inline_queue_drops_invalid_choice():
     q.submit(_job(), FakeBrain(lambda c, a: {"choice": "fly", "reason": "nope"}))
     assert q.pop("a") is None
     assert q.pending("a") is False
+
+
+def test_threaded_queue_delivers_result():
+    q = ThreadedThinkQueue(daily_budget=100)
+    q.submit(_job(), FakeBrain(lambda c, a: {"choice": "eat", "reason": "r"}))
+    done = q.wait_idle(timeout=2.0)   # test helper: block until worker drains
+    assert done
+    assert q.pop("a")["choice"] == "eat"
+
+
+def test_threaded_queue_stops_submitting_at_budget():
+    q = ThreadedThinkQueue(daily_budget=0)
+    q.submit(_job(), FakeBrain(lambda c, a: {"choice": "eat", "reason": "r"}))
+    q.wait_idle(timeout=1.0)
+    assert q.pop("a") is None          # nothing was processed
+    assert q.requests_today == 0
