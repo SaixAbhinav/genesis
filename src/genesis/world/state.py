@@ -23,6 +23,7 @@ class Agent:
     brain: str = ""
     knowledge: list[str] = field(default_factory=list)
     current_action: dict | None = None
+    goal: dict | None = None
     collapse_until: int = 0
     # Plan 3 — Abyss & magic
     layer: int = 0

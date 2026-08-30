@@ -24,3 +24,11 @@ def test_load_agents():
     assert len(agents) == 4
     assert agents[0].name == "Ash"
     assert agents[0].status == "active"
+
+
+def test_agent_goal_round_trips_through_json():
+    from genesis.world.state import Agent, WorldState
+    a = Agent(id="a", name="A", x=0, y=0, goal={"id": "eat", "verb": "eat"})
+    st = WorldState(sim_minutes=0, seed=1, agents=[a])
+    back = WorldState.from_json(st.to_json())
+    assert back.agents[0].goal == {"id": "eat", "verb": "eat"}

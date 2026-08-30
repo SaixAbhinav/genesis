@@ -6,9 +6,10 @@ def test_engine_loads_three_layer_world():
     from genesis.world.engine import Engine
     from genesis.world.grid import WorldMap
     import json, pathlib
-    layers = json.loads(pathlib.Path("configs/layers.json").read_text())
+    cfg = pathlib.Path("configs")
+    layers = json.loads((cfg / "layers.json").read_text())
     assert len(layers["layers"]) == 3
-    maps = [WorldMap.from_file(l["map"]) for l in layers["layers"]]
+    maps = [WorldMap.from_file(cfg / l["map"]) for l in layers["layers"]]
     assert len(maps) == 3
     engine = Engine.from_configs("configs")
     assert len(engine.maps) == 3

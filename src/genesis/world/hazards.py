@@ -1,5 +1,4 @@
-def _clamp(v):
-    return max(0.0, min(100.0, v))
+from genesis.world.util import clamp as _clamp
 
 
 def miasma_tick(agent, layer_cfg, minute):
@@ -11,7 +10,7 @@ def miasma_tick(agent, layer_cfg, minute):
     return [{"type": "miasma", "agent": agent.id, "need": need}]
 
 
-def fall_check(agent, world_map, layer_cfg, minute, rng):
+def fall_check(agent, world_map, layer_cfg, minute):
     cliffs = layer_cfg.get("cliff_tiles", [])
     if [agent.x, agent.y] not in cliffs or minute < agent.negate_fall_until:
         return []

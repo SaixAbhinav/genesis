@@ -46,7 +46,7 @@ def test_well_ranked_agent_survives_the_climb():
     a.needs.energy = 40.0
     st = WorldState(0, 7, [a])
     settings = {**BASE, "layers": LAYERS, "energy_decay_per_min": 10.0}
-    eng = Engine(st, settings=settings, maps=MAPS, layers=LAYERS, magic=_book())
+    eng = Engine(st, settings=settings, maps=MAPS, magic=_book())
 
     # Tick 1: Ascend L2->L1, strain 20+45=65 (>= lethal 60)
     a.current_action = {"action": "ascend"}
@@ -66,6 +66,24 @@ def test_well_ranked_agent_survives_the_climb():
     assert a.status != "dead"
 
 
+def test_mana_regen_enables_a_second_heal():
+    # Demoability: an agent sits at dangerous strain with an EMPTY mana pool.
+    # The instinct heal-reflex only fires when mana >= cost, so at mana 0 it
+    # cannot heal at all. Only because mana regenerates across ticks does the
+    # pool climb back past the 5-cost, letting the reflex finally cast and burn
+    # the curse down. Without regen the loop is one-shot and strain never drops.
+    a = Agent(id="hero", name="Reg", x=1, y=1, layer=0, strain=30.0,
+              mana=0.0, mana_max=50.0, knowledge=["minor_heal"],
+              attr_rank={"healing": 1})
+    st = WorldState(0, 7, [a])
+    settings = {**BASE, "layers": LAYERS, "mana_regen_per_min": 1.0}
+    eng = Engine(st, settings=settings, maps=MAPS, magic=_book())
+
+    eng.advance(10)
+
+    assert a.strain == 0.0  # the reflex healed off the whole curse
+
+
 def test_under_ranked_agent_dies_on_the_climb():
     # No heal, energy will be spent: ascending from L2 pushes strain past lethal,
     # and the next need-crash kills instead of collapsing.
@@ -74,7 +92,7 @@ def test_under_ranked_agent_dies_on_the_climb():
     st = WorldState(0, 7, [a])
     settings = {**BASE, "layers": LAYERS, "hunger_decay_per_min": 0.0,
                 "energy_decay_per_min": 10.0}
-    eng = Engine(st, settings=settings, maps=MAPS, layers=LAYERS, magic=_book())
+    eng = Engine(st, settings=settings, maps=MAPS, magic=_book())
     a.current_action = {"action": "ascend"}     # +45 strain -> 65 >= lethal
     eng.advance(1)  # tick_needs: energy 20->10 (no crash); step_action: ascend (strain 20->65)
     eng.advance(1)  # tick_needs: energy 10->0 (crash + strain 65 >= lethal -> dead)
