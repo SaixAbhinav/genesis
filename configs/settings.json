@@ -23,5 +23,8 @@
   "strain_lethal_threshold": 60.0,
   "strain_heal_threshold": 25.0,
   "mana_regen_per_min": 0.1,
-  "mana_regen_sleeping_per_min": 0.5
+  "mana_regen_sleeping_per_min": 0.5,
+  "decision_cooldown_min": 30,
+  "decision_stale_min": 20,
+  "daily_request_budget": 900
 }

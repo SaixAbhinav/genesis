@@ -16,8 +16,9 @@ def _top_rank(agent) -> str:
     return f"{attr}:{rank_idx}"
 
 
-def run_sim(days: float, db_path: str | Path, seed: int = 42) -> dict:
-    engine = Engine.from_configs(CONFIG_DIR, seed=seed)
+def run_sim(days: float, db_path: str | Path, seed: int = 42,
+            minds: bool = False) -> dict:
+    engine = Engine.from_configs(CONFIG_DIR, seed=seed, minds=minds)
     conn = connect(db_path)
     saved = load_state(conn)
     if saved is not None:
@@ -54,8 +55,10 @@ def main() -> None:
     p.add_argument("--days", type=float, default=1.0)
     p.add_argument("--db", default="world.db")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--minds", action="store_true",
+                   help="Enable LLM-driven decisions (requires GROQ_API_KEY)")
     args = p.parse_args()
-    print(json.dumps(run_sim(args.days, args.db, args.seed), indent=2))
+    print(json.dumps(run_sim(args.days, args.db, args.seed, args.minds), indent=2))
 
 
 if __name__ == "__main__":

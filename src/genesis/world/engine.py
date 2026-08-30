@@ -34,10 +34,12 @@ class Engine:
         self.queue = queue
         self.instinct = InstinctBrain()
         self._last_submit: dict[str, int] = {}
+        self._live = True
 
     @classmethod
     def from_configs(cls, config_dir: str | Path = "configs",
-                      seed: int = 42, sim_minutes: int = 720) -> "Engine":
+                      seed: int = 42, sim_minutes: int = 720,
+                      minds: bool = False) -> "Engine":
         """Build a fully-wired Engine from the on-disk config directory.
 
         Loads settings.json, layers.json (+ each layer's map/resources file),
@@ -82,7 +84,21 @@ class Engine:
             resources=resources)
         magic = MagicBook.from_file(config_dir / "magic.json")
         graph = DiscoveryGraph.from_file(config_dir / "discoveries.json")
-        return cls(state, settings=settings, maps=maps, magic=magic, graph=graph)
+
+        brains, queue = {}, None
+        if minds:
+            from genesis.mind.groq import GroqAdapter
+            from genesis.mind.llm_brain import LLMBrain
+            from genesis.mind.queue import ThreadedThinkQueue
+            cfg = json.loads(
+                (config_dir / "brains.json").read_text(encoding="utf-8"))["brains"]
+            for ag in state.agents:
+                spec = cfg.get(ag.brain) or cfg["default"]
+                brains[ag.id] = LLMBrain(GroqAdapter(spec["model"]), spec["model"])
+            queue = ThreadedThinkQueue(settings.get("daily_request_budget", 900))
+
+        return cls(state, settings=settings, maps=maps, magic=magic, graph=graph,
+                   brains=brains, queue=queue)
 
     def map_for(self, agent):
         return self.maps[agent.layer]
@@ -112,7 +128,8 @@ class Engine:
         self.state.sim_minutes += 1
         return events
 
-    def advance(self, minutes: int) -> list[dict]:
+    def advance(self, minutes: int, live: bool = True) -> list[dict]:
+        self._live = live
         events: list[dict] = []
         for _ in range(minutes):
             events += self.tick()
@@ -126,9 +143,11 @@ class Engine:
             act = self._drive(agent, wm)
             if act is not None:
                 return act, extra
-        # 2/3. LLM path (only if a brain+queue are wired for this agent)
+        # 2/3. LLM path (only if a brain+queue are wired for this agent, and
+        # only during live simulation — ADR 0001: catch-up/fast-forward runs
+        # Instinct-only and must never submit LLM jobs).
         brain = self.brains.get(agent.id)
-        if self.queue is not None and brain is not None:
+        if self._live and self.queue is not None and brain is not None:
             menu = affordances(agent, self.state, wm, self.settings,
                                self.graph, self.magic)
             landed = self._consume(agent, wm, menu, minute, extra)
