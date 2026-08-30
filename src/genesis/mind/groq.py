@@ -24,9 +24,16 @@ class GroqAdapter:
         body = {"model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
-                "temperature": 0.7, "max_tokens": 120}
+                "temperature": 0.7,
+                # Reasoning models (e.g. gpt-oss) spend output tokens thinking;
+                # too small a budget truncates before the JSON and 400s with
+                # json_validate_failed. Keep effort low to stay cheap/fast.
+                "max_tokens": 1024, "reasoning_effort": "low"}
         headers = {"Authorization": f"Bearer {self.api_key}",
-                   "Content-Type": "application/json"}
+                   "Content-Type": "application/json",
+                   # Groq's API sits behind Cloudflare, which rejects urllib's
+                   # default User-Agent with a 403 (error 1010). Send our own.
+                   "User-Agent": "genesis-sim/0.1"}
         data = _http_post(_URL, headers, body)
         content = data["choices"][0]["message"]["content"]
         return json.loads(content)

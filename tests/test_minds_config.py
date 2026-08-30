@@ -7,12 +7,17 @@ def test_from_configs_without_minds_has_no_brains():
 
 
 def test_from_configs_with_minds_wires_a_brain_per_agent(monkeypatch):
+    import json
+    from pathlib import Path
     monkeypatch.setenv("GROQ_API_KEY", "test")
+    expected_model = json.loads(
+        Path("configs/brains.json").read_text(encoding="utf-8")
+    )["brains"]["default"]["model"]
     eng = Engine.from_configs("configs", minds=True)
     assert eng.queue is not None
     assert len(eng.brains) == len(eng.state.agents)
     for b in eng.brains.values():
-        assert b.model == "llama-3.3-70b-versatile"
+        assert b.model == expected_model
 
 
 from genesis.world.grid import WorldMap

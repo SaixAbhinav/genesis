@@ -1,1 +1,1 @@
-{ "brains": { "default": { "provider": "groq", "model": "llama-3.3-70b-versatile" } } }
+{ "brains": { "default": { "provider": "groq", "model": "openai/gpt-oss-20b" } } }
