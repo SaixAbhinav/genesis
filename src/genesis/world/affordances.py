@@ -27,6 +27,17 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                 "label": f"gather {r.type}", "dir": _dir(dx, dy),
                 "dist": abs(dx) + abs(dy)})
 
+    # experiment_with: combine held items toward an undiscovered recipe result
+    if graph is not None:
+        held = [k for k, v in agent.inventory.items() if v > 0]
+        if held:
+            result = graph.match(held, agent.knowledge)
+            if result is not None and result not in agent.knowledge:
+                opts.append({"id": "experiment", "verb": "experiment_with",
+                             "params": {"items": held},
+                             "label": "experiment with what you're carrying",
+                             "dir": "here", "dist": 0})
+
     # sleep and observe are always available
     opts.append({"id": "sleep", "verb": "sleep", "params": {},
                  "label": "sleep to recover energy", "dir": "here", "dist": 0})

@@ -1,6 +1,8 @@
 # tests/test_affordances.py
 from genesis.world.affordances import affordances
+from genesis.world.discovery import DiscoveryGraph
 from genesis.world.grid import WorldMap
+from genesis.world.magic import MagicBook
 from genesis.world.state import Agent, WorldState, Resource
 
 WM = WorldMap(["GGGG", "GGGG", "GGGG", "GGGG"])
@@ -31,3 +33,27 @@ def test_no_gather_for_resource_on_other_layer():
     st = WorldState(0, 1, [a], [Resource(type="berries", x=2, y=1, qty=3, layer=1)])
     opts = affordances(a, st, WM, S)
     assert not any(o["verb"] == "gather" for o in opts)
+
+
+def test_offers_experiment_when_recipe_matches_and_result_unknown():
+    g = DiscoveryGraph(
+        recipes=[{"items": ["wood", "flint"], "requires": [], "result": "fire"}],
+        buildables={},
+    )
+    a = _agent(inventory={"wood": 1, "flint": 1})
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, graph=g)
+    exp = [o for o in opts if o["verb"] == "experiment_with"]
+    assert exp and exp[0]["id"] == "experiment"
+    assert set(exp[0]["params"]["items"]) == {"wood", "flint"}
+
+
+def test_no_experiment_when_result_already_known():
+    g = DiscoveryGraph(
+        recipes=[{"items": ["wood", "flint"], "requires": [], "result": "fire"}],
+        buildables={},
+    )
+    a = _agent(inventory={"wood": 1, "flint": 1}, knowledge=["fire"])
+    st = WorldState(0, 1, [a])
+    opts = affordances(a, st, WM, S, graph=g)
+    assert not any(o["verb"] == "experiment_with" for o in opts)
