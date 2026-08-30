@@ -109,3 +109,23 @@ def test_no_cast_when_not_enough_mana():
     st = WorldState(0, 1, [a])
     opts = affordances(a, st, WM, S, magic=m)
     assert not any(o["verb"] == "cast" for o in opts)
+
+
+def test_offers_descend_toward_link_tile_even_when_not_standing_on_it():
+    a = _agent(layer=0)
+    st = WorldState(0, 1, [a])
+    layers = [{"link": {"descend": [2, 1]}}, {"link": {}}]
+    settings = {**S, "layers": layers}
+    opts = affordances(a, st, WM, settings)
+    desc = [o for o in opts if o["verb"] == "descend"]
+    assert desc and desc[0]["id"] == "descend"
+    assert desc[0]["dist"] == 3  # (2,1) is 3 tiles from (0,0)
+
+
+def test_no_ascend_from_top_layer():
+    a = _agent(layer=0)
+    st = WorldState(0, 1, [a])
+    layers = [{"link": {"ascend": [0, 0]}}]
+    settings = {**S, "layers": layers}
+    opts = affordances(a, st, WM, settings)
+    assert not any(o["verb"] == "ascend" for o in opts)

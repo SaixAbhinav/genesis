@@ -62,6 +62,24 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                              "params": {"spell": name},
                              "label": f"cast {name}", "dir": "here", "dist": 0})
 
+    # descend / ascend: the layer-link tile, offered even if not yet reached
+    layers = settings.get("layers", []) if settings else []
+    if layers and 0 <= agent.layer < len(layers):
+        link = layers[agent.layer].get("link", {})
+        for verb in ("descend", "ascend"):
+            tile = link.get(verb)
+            if tile is None:
+                continue
+            if verb == "descend" and agent.layer + 1 >= len(layers):
+                continue
+            if verb == "ascend" and agent.layer == 0:
+                continue
+            tx, ty = tile
+            dx, dy = tx - agent.x, ty - agent.y
+            opts.append({"id": verb, "verb": verb, "params": {},
+                         "label": f"{verb} via the layer link",
+                         "dir": _dir(dx, dy), "dist": abs(dx) + abs(dy)})
+
     # sleep and observe are always available
     opts.append({"id": "sleep", "verb": "sleep", "params": {},
                  "label": "sleep to recover energy", "dir": "here", "dist": 0})
