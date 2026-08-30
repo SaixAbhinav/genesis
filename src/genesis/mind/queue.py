@@ -71,7 +71,11 @@ class ThreadedThinkQueue:
     def _run(self):
         while True:
             job, brain = self._jobs.get()
-            result = _resolve(job, brain)
+            result = None
+            try:
+                result = _resolve(job, brain)
+            except Exception:
+                result = None
             with self._lock:
                 self._pending.discard(job.agent_id)
                 if result is not None:
