@@ -29,6 +29,12 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
     if agent.strain > 0:
         agent.strain = max(0.0, agent.strain - settings.get("strain_decay_per_min", 0.0))
 
+    if agent.mana_max > 0:
+        rate = (settings.get("mana_regen_sleeping_per_min", 0.0)
+                if agent.status == "sleeping"
+                else settings.get("mana_regen_per_min", 0.0))
+        agent.mana = min(agent.mana_max, agent.mana + rate)
+
     day = is_daytime(sim_minutes, settings)
     n.hunger = _clamp(n.hunger - settings["hunger_decay_per_min"])
     if agent.status == "sleeping":
