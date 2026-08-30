@@ -24,8 +24,11 @@ Terms sharpened while designing Plan 4 (LLM minds) are marked ★.
   (a resource's tile, a spell's name), never the Agent's relative position.
 - **Goal** ★ — the single Affordance an Agent is currently pursuing. The engine
   drives a Goal to completion across many ticks, re-consulting the Mind only when
-  there is no active Goal. A Goal ends when it is satisfied, becomes invalid (its
-  target is gone), or is interrupted by a survival-critical need.
+  there is no active Goal. A Goal ends **only** when it is satisfied or becomes
+  invalid (its target is gone). It is **not** interrupted by hunger, cold, or the
+  Curse: a Mind is sovereign over risk, and a Goal may carry its Agent to death.
+  **Death is therefore a choice a Mind can make** — by committing to a fatal Goal,
+  or by persistently declining the survival options the menu always offers.
 - **Action** — one engine-executed step (move, gather, cast, build, descend…).
   One Goal expands into one or more Actions.
 - **Decision** ★ — one act of a Brain choosing a Goal from Affordances. Every

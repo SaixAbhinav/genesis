@@ -52,14 +52,18 @@ Three domain terms (see `CONTEXT.md`), in a strict hierarchy:
 
 ### Decision flow (inside `Engine.tick`, per active Agent)
 
+**Goals are sovereign — Minds can make fatal choices.** There is no survival
+interrupt. An active Goal runs to completion or invalidity even if it kills the
+Agent (need-collapse *or* Curse death). The menu always offers `eat`/`heal`/flee,
+so death traces to a real decision — the Mind committed to a fatal Goal, or kept
+declining the survival options on offer. This is the intended permadeath drama and
+a core signal of the "who's smarter" benchmark. (The only softening is latency, not
+choice: see step 4 — while an Agent has *no* Goal and a thought is still in flight,
+full-reflex Instinct still eats/heals/flees, so no Agent dies merely because the
+queue was slow.)
+
 When `agent.current_action is None`:
 
-0. **Survival interrupt.** If a need is survival-critical or strain is dangerous
-   (the same thresholds Instinct reacts to), clear any active `agent.goal`. A Mind
-   is never locked into a Goal while dying — the Agent gets a fresh Decision (or,
-   until it lands, Instinct's heal/eat/flee reflex). This is what lets a *smart*
-   model visibly react to danger; a Goal that ignored starvation would only make
-   every model look equally reckless.
 1. **Drive the active Goal.** If `agent.goal` is set, call
    `resolve_goal(agent, goal, …) → action | None`.
    - non-None → set `current_action`, done for this tick.
@@ -168,7 +172,10 @@ appended to the existing event stream / SQLite `events` table. This makes the
 - Decision flow with `InlineQueue` + `FakeBrain`: Agent adopts and pursues the
   chosen affordance as a Goal to completion.
 - Staleness: a Decision whose affordance vanished is dropped → Instinct fallback.
-- In-flight: while pending, the Agent acts on Instinct.
+- In-flight: while pending, the Agent acts on full-reflex Instinct (eats/heals).
+- Fatal sovereignty: an Agent driving a Goal that ignores a critical need is **not**
+  rescued — it collapses/dies pursuing the Goal (proves there is no survival
+  interrupt on an active Goal).
 - Cooldown: an Agent does not submit more than once per `decision_cooldown_min`.
 - Budget guard: at the daily cap, `ThreadedThinkQueue` stops submitting and the
   Agent rides Instinct.
@@ -197,6 +204,8 @@ appended to the existing event stream / SQLite `events` table. This makes the
 - With `--minds`, a live run shows Agents adopting LLM-chosen Goals, pursuing them
   to completion, and re-deciding — visible in the `decided` event stream with
   reasons — while never blocking the world.
+- An Agent can die pursuing an LLM-chosen Goal; such deaths trace to a Decision
+  (a fatal Goal, or declined survival options), never to queue latency.
 - With no key / no `--minds`, the sim runs exactly as today.
 - The full suite is green and deterministic; no test makes a network call.
 - A catch-up fast-forward makes zero LLM requests (ADR 0001).
