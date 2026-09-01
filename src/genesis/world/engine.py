@@ -39,7 +39,7 @@ class Engine:
     @classmethod
     def from_configs(cls, config_dir: str | Path = "configs",
                       seed: int = 42, sim_minutes: int = 720,
-                      minds: bool = False) -> "Engine":
+                      minds: bool = False, threaded: bool = False) -> "Engine":
         """Build a fully-wired Engine from the on-disk config directory.
 
         Loads settings.json, layers.json (+ each layer's map/resources file),
@@ -89,13 +89,19 @@ class Engine:
         if minds:
             from genesis.mind.groq import GroqAdapter
             from genesis.mind.llm_brain import LLMBrain
-            from genesis.mind.queue import ThreadedThinkQueue
+            from genesis.mind.queue import InlineQueue, ThreadedThinkQueue
             cfg = json.loads(
                 (config_dir / "brains.json").read_text(encoding="utf-8"))["brains"]
             for ag in state.agents:
                 spec = cfg.get(ag.brain) or cfg["default"]
                 brains[ag.id] = LLMBrain(GroqAdapter(spec["model"]), spec["model"])
-            queue = ThreadedThinkQueue(settings.get("daily_request_budget", 900))
+            # Default to the synchronous InlineQueue: engine.advance runs sim-time
+            # far faster than wall-time, so the async ThreadedThinkQueue's decisions
+            # return long past decision_stale_min and get dropped (0 land). Inline
+            # resolves each decision in-tick, so LLM minds actually drive batch runs.
+            # threaded=True keeps the async queue for a future real-time/paced loop.
+            queue = (ThreadedThinkQueue(settings.get("daily_request_budget", 900))
+                     if threaded else InlineQueue())
 
         return cls(state, settings=settings, maps=maps, magic=magic, graph=graph,
                    brains=brains, queue=queue)
