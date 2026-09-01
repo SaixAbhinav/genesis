@@ -73,10 +73,6 @@ def choose_action(agent: Agent, state: WorldState, world_map: WorldMap,
     if agent.needs.energy < 30:
         return {"action": "sleep"}
     if graph is not None:
-        held = [k for k, v in agent.inventory.items() if v > 0]
-        result = graph.match(held, agent.knowledge)
-        if result is not None and result not in agent.knowledge:
-            return {"action": "experiment_with", "items": held}
         camp = graph.buildable("campfire")
         if ("fire" in agent.knowledge
                 and _has_materials(agent, camp["materials"])
@@ -90,6 +86,10 @@ def choose_action(agent: Agent, state: WorldState, world_map: WorldMap,
                 and world_map.terrain(agent.x, agent.y) in hut["terrain"]
                 and not _structure_within(state, "hut", agent, 3)):
             return {"action": "build", "structure": "hut"}
+        held = [k for k, v in agent.inventory.items() if v > 0]
+        result = graph.match(held, agent.knowledge)
+        if result is not None and result not in agent.knowledge:
+            return {"action": "experiment_with", "items": held}
         raw = _raw_material_here(agent, state, world_map)
         if raw is not None:
             return {"action": "gather", "resource": raw}

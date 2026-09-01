@@ -1,0 +1,20 @@
+{
+  "materials": {
+    "wood":          ["flammable", "fibrous", "solid"],
+    "dry_grass":     ["flammable", "fibrous", "light"],
+    "flint":         ["sharp", "sparks"],
+    "stone":         ["hard", "heavy", "solid"],
+    "berries":       ["edible", "nourishing", "small"],
+    "fish":          ["edible", "nourishing", "wet"],
+    "water":         ["wet", "solvent"],
+    "mana_shard":    ["mana_rich", "luminous"],
+    "ember_dust":    ["flammable", "hot", "ether_fire"],
+    "arcane_moss":   ["wet", "medicinal", "ether_water"],
+    "thick_moss":    ["insulating", "fibrous", "damp"],
+    "quarry_dust":   ["gritty", "earthy", "ether_earth"],
+    "feather_charm": ["light", "airy", "ether_wind"],
+    "ore":           ["hard", "heavy", "metallic", "earthy"],
+    "charcoal":      ["flammable", "hot_burning", "sooty"],
+    "metal_ingot":   ["hard", "heavy", "metallic"]
+  }
+}

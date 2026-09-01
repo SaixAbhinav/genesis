@@ -8,7 +8,7 @@ def is_daytime(sim_minutes: int, settings: dict) -> bool:
 
 
 def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
-               near_warmth: bool = False) -> list[dict]:
+               near_warmth: bool = False, props_of=None) -> list[dict]:
     events: list[dict] = []
     n = agent.needs
 
@@ -46,6 +46,10 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
         rate = (settings["warmth_decay_night_sleeping_per_min"]
                 if agent.status == "sleeping"
                 else settings["warmth_decay_night_per_min"])
+        if props_of is not None and any(
+                "insulating" in props_of(it)
+                for it, q in agent.inventory.items() if q > 0):
+            rate *= settings.get("insulation_warmth_factor", 1.0)
         n.warmth = _clamp(n.warmth - rate)
 
     if min(n.hunger, n.energy, n.warmth) <= 0:

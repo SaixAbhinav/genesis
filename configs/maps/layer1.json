@@ -11,6 +11,7 @@
   ],
   "resources": [
     {"type": "arcane_moss", "x": 5, "y": 1, "qty": 10},
-    {"type": "berries", "x": 3, "y": 4, "qty": 30}
+    {"type": "berries", "x": 3, "y": 4, "qty": 30},
+    {"type": "thick_moss", "x": 2, "y": 6, "qty": 10}
   ]
 }

@@ -37,16 +37,29 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                 "label": f"harvest {r.type}", "dir": _dir(dx, dy),
                 "dist": abs(dx) + abs(dy)})
 
-    # experiment_with: combine held items toward an undiscovered recipe result
+    # experiment_with: offer combinations to TRY (may fail) — no success pre-check
     if graph is not None:
-        held = [k for k, v in agent.inventory.items() if v > 0]
-        if held:
-            result = graph.match(held, agent.knowledge)
-            if result is not None and result not in agent.knowledge:
-                opts.append({"id": "experiment", "verb": "experiment_with",
-                             "params": {"items": held},
-                             "label": "experiment with what you're carrying",
-                             "dir": "here", "dist": 0})
+        held = sorted(k for k, v in agent.inventory.items() if v > 0)
+        pool = held[: settings.get("experiment_max_items", 6)]
+        combos: list[list[str]] = []
+        for i in range(len(pool)):
+            for j in range(i + 1, len(pool)):
+                combos.append([pool[i], pool[j]])
+        if pool:
+            combos.append(list(pool))          # combine everything (lone item incl.)
+        seen = set()
+        combos = [c for c in combos if not (tuple(c) in seen or seen.add(tuple(c)))]
+        cap = settings.get("experiment_affordance_cap", 10)
+        for combo in combos[:cap]:
+            if graph.props is not None:
+                shown = ", ".join(
+                    f"{it} [{','.join(sorted(graph.props.props_of(it)))}]"
+                    for it in combo)
+            else:
+                shown = ", ".join(combo)
+            opts.append({"id": f"experiment:{'+'.join(combo)}",
+                         "verb": "experiment_with", "params": {"items": combo},
+                         "label": f"experiment: {shown}", "dir": "here", "dist": 0})
 
     # build: known structures whose materials are fully held
     if graph is not None:

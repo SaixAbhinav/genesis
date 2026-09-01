@@ -3,11 +3,13 @@ from genesis import load_settings
 from genesis.world.state import Agent, Resource, WorldState
 from genesis.world.grid import WorldMap
 from genesis.world.discovery import DiscoveryGraph
+from genesis.world.properties import PropertyBook
 from genesis.world.instinct import choose_action
 
 S = load_settings("configs/settings.json")
 M = WorldMap.from_file("configs/map.json")
-G = DiscoveryGraph.from_file("configs/discoveries.json")
+P = PropertyBook.from_file("configs/properties.json")
+G = DiscoveryGraph.from_file("configs/discoveries.json", P)
 NOON = 720
 
 
@@ -43,9 +45,8 @@ def test_without_graph_matches_plan1_wander():
     assert act["action"] in ("move_to", "observe")
 
 
-def test_does_not_re_experiment_known_recipe():
+def test_does_not_re_experiment_when_nothing_new():
     a = Agent(id="a", name="A", x=5, y=5, knowledge=["fire"],
-              inventory={"flint": 1, "wood": 1})
-    # holds fire materials but already knows fire, and has 1 wood (< campfire cost 2)
+              inventory={"stone": 1})     # stone alone yields no new discovery
     act = choose_action(a, world(a), M, S, random.Random(1), G)
     assert act["action"] != "experiment_with"

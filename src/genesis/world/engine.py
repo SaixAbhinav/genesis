@@ -12,6 +12,7 @@ from genesis.world.grid import WorldMap
 from genesis.world.hazards import miasma_tick, creature_damage
 from genesis.world.magic import MagicBook
 from genesis.world.needs import tick_needs
+from genesis.world.properties import PropertyBook
 from genesis.world.state import Resource, WorldState, load_agents
 from genesis.world.structures import has_warmth_source
 
@@ -21,14 +22,15 @@ class Engine:
                  settings: dict | None = None, graph: DiscoveryGraph | None = None,
                  maps: list[WorldMap] | None = None,
                  magic: dict | None = None, brains: dict | None = None,
-                 queue=None):
+                 queue=None, props=None):
         self.state = state
         if maps is None:
             maps = [world_map] if world_map is not None else []
         self.maps = maps
         self.settings = settings
         self.rng = random.Random(state.seed)
-        self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json")
+        self.props = props or PropertyBook.from_file("configs/properties.json")
+        self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json", self.props)
         self.magic = magic
         self.brains = brains or {}
         self.queue = queue
@@ -82,8 +84,9 @@ class Engine:
             sim_minutes=sim_minutes, seed=seed,
             agents=load_agents(config_dir / "agents.json"),
             resources=resources)
-        magic = MagicBook.from_file(config_dir / "magic.json")
-        graph = DiscoveryGraph.from_file(config_dir / "discoveries.json")
+        props = PropertyBook.from_file(config_dir / "properties.json")
+        magic = MagicBook.from_file(config_dir / "magic.json", props)
+        graph = DiscoveryGraph.from_file(config_dir / "discoveries.json", props)
 
         brains, queue = {}, None
         if minds:
@@ -98,7 +101,7 @@ class Engine:
             queue = ThreadedThinkQueue(settings.get("daily_request_budget", 900))
 
         return cls(state, settings=settings, maps=maps, magic=magic, graph=graph,
-                   brains=brains, queue=queue)
+                   brains=brains, queue=queue, props=props)
 
     def map_for(self, agent):
         return self.maps[agent.layer]
@@ -111,7 +114,8 @@ class Engine:
                 continue
             wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
-            events += tick_needs(agent, minute, self.settings, near_warmth=near)
+            events += tick_needs(agent, minute, self.settings,
+                                 near_warmth=near, props_of=self.props.props_of)
             layers = self.settings.get("layers", []) if self.settings else []
             if layers and 0 <= agent.layer < len(layers):
                 lc = layers[agent.layer]
@@ -200,4 +204,6 @@ class Engine:
         return {"persona": agent.persona, "needs": vars(agent.needs),
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
+                "materials": {it: sorted(self.props.props_of(it))
+                              for it in agent.inventory if agent.inventory[it] > 0},
                 "known": list(agent.knowledge), "options": menu}
