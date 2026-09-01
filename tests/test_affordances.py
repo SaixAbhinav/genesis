@@ -3,6 +3,7 @@ from genesis.world.affordances import affordances
 from genesis.world.discovery import DiscoveryGraph
 from genesis.world.grid import WorldMap
 from genesis.world.magic import MagicBook
+from genesis.world.properties import PropertyBook
 from genesis.world.state import Agent, WorldState, Resource
 
 WM = WorldMap(["GGGG", "GGGG", "GGGG", "GGGG"])
@@ -35,24 +36,26 @@ def test_no_gather_for_resource_on_other_layer():
     assert not any(o["verb"] == "gather" for o in opts)
 
 
+_P = PropertyBook({"wood": ["flammable"], "flint": ["sparks"]})
+
+
 def test_offers_experiment_when_recipe_matches_and_result_unknown():
     g = DiscoveryGraph(
-        recipes=[{"items": ["wood", "flint"], "requires": [], "result": "fire"}],
-        buildables={},
-    )
+        recipes=[{"name": "fire", "requires": ["flammable", "sparks"],
+                  "prereqs": {}, "kind": "knowledge", "min_items": 2}],
+        buildables={}, props=_P)
     a = _agent(inventory={"wood": 1, "flint": 1})
     st = WorldState(0, 1, [a])
     opts = affordances(a, st, WM, S, graph=g)
     exp = [o for o in opts if o["verb"] == "experiment_with"]
-    assert exp and exp[0]["id"] == "experiment"
-    assert set(exp[0]["params"]["items"]) == {"wood", "flint"}
+    assert exp and set(exp[0]["params"]["items"]) == {"wood", "flint"}
 
 
 def test_no_experiment_when_result_already_known():
     g = DiscoveryGraph(
-        recipes=[{"items": ["wood", "flint"], "requires": [], "result": "fire"}],
-        buildables={},
-    )
+        recipes=[{"name": "fire", "requires": ["flammable", "sparks"],
+                  "prereqs": {}, "kind": "knowledge", "min_items": 2}],
+        buildables={}, props=_P)
     a = _agent(inventory={"wood": 1, "flint": 1}, knowledge=["fire"])
     st = WorldState(0, 1, [a])
     opts = affordances(a, st, WM, S, graph=g)

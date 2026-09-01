@@ -2,7 +2,7 @@
   "materials": {
     "wood":          ["flammable", "fibrous", "solid"],
     "dry_grass":     ["flammable", "fibrous", "light"],
-    "flint":         ["sharp", "hard", "sparks"],
+    "flint":         ["sharp", "sparks"],
     "stone":         ["hard", "heavy", "solid"],
     "berries":       ["edible", "nourishing", "small"],
     "fish":          ["edible", "nourishing", "wet"],

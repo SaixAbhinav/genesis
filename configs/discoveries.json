@@ -1,8 +1,18 @@
 {
   "recipes": [
-    {"items": ["flint", "wood"], "requires": [], "result": "fire"},
-    {"items": ["stone", "flint"], "requires": [], "result": "stone_tools"},
-    {"items": ["berries"], "requires": ["fire"], "result": "cooked_food"}
+    {"name": "fire", "requires": ["flammable", "sparks"], "prereqs": {},
+     "kind": "knowledge", "min_items": 2},
+    {"name": "stone_tools", "requires": ["hard", "sharp"], "prereqs": {},
+     "kind": "knowledge", "min_items": 2},
+    {"name": "cooked_food", "requires": ["edible"],
+     "prereqs": {"knowledge": ["fire"]}, "kind": "knowledge", "min_items": 1},
+    {"name": "metal_ingot", "requires": ["metallic", "hot_burning"], "prereqs": {},
+     "kind": "item", "produces": "metal_ingot", "min_items": 2},
+    {"name": "charcoal", "requires": ["flammable"],
+     "prereqs": {"knowledge": ["fire"]}, "kind": "item",
+     "produces": "charcoal", "min_items": 1},
+    {"name": "metal_tools", "requires": ["metallic", "hard"],
+     "prereqs": {"knowledge": ["stone_tools"]}, "kind": "knowledge", "min_items": 1}
   ],
   "buildables": {
     "campfire": {"requires": ["fire"], "materials": {"wood": 2},
