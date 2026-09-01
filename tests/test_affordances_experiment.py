@@ -39,3 +39,11 @@ def test_lone_item_still_offered():
                        props=PropertyBook({"mana_shard": ["mana_rich"]}))
     opts = affordances(a, WorldState(0, 1, [a]), WM, S, graph=g)
     assert any(o["id"] == "experiment:mana_shard" for o in opts)
+
+
+def test_no_duplicate_ids_for_two_item_hold():
+    a = _a(inventory={"wood": 1, "flint": 1})
+    opts = affordances(a, WorldState(0, 1, [a]), WM, S, graph=G)
+    ids = [o["id"] for o in opts if o["verb"] == "experiment_with"]
+    assert len(ids) == len(set(ids))
+    assert ids == ["experiment:flint+wood"]

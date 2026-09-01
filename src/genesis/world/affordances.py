@@ -47,6 +47,8 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
                 combos.append([pool[i], pool[j]])
         if pool:
             combos.append(list(pool))          # combine everything (lone item incl.)
+        seen = set()
+        combos = [c for c in combos if not (tuple(c) in seen or seen.add(tuple(c)))]
         cap = settings.get("experiment_affordance_cap", 10)
         for combo in combos[:cap]:
             if graph.props is not None:
