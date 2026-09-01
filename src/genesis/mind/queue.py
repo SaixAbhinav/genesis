@@ -50,15 +50,26 @@ class ThreadedThinkQueue:
     A per-day request budget caps how many jobs may be submitted; at or over
     budget, submit() is a no-op so the agent falls back to instinct.
     """
-    def __init__(self, daily_budget: int):
+    def __init__(self, daily_budget: int, workers: int = 1,
+                 min_interval_s: float = 0.0):
         self.daily_budget = daily_budget
         self.requests_today = 0
         self._jobs: _q.Queue = _q.Queue()
         self._inbox: dict[str, dict] = {}
         self._pending: set[str] = set()
         self._lock = threading.Lock()
-        self._worker = threading.Thread(target=self._run, daemon=True)
-        self._worker.start()
+        # Per-provider rate limiter: no two brain calls start closer than
+        # min_interval_s apart (0 = unthrottled). Free tiers cap requests per
+        # minute / tokens per minute; without this the pool 429s.
+        self._min_interval = max(0.0, min_interval_s)
+        self._next_req = 0.0
+        # A pool of daemon workers drains the same queue; shared state is
+        # lock-guarded, so concurrent workers let N brain calls run at once
+        # (decisions for N agents land together instead of serially).
+        self._workers = [threading.Thread(target=self._run, daemon=True)
+                         for _ in range(max(1, workers))]
+        for w in self._workers:
+            w.start()
 
     def submit(self, job: DecisionJob, brain) -> None:
         with self._lock:
@@ -68,11 +79,22 @@ class ThreadedThinkQueue:
             self._pending.add(job.agent_id)
         self._jobs.put((job, brain))
 
+    def _throttle(self):
+        if self._min_interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            wait = max(0.0, self._next_req - now)
+            self._next_req = max(now, self._next_req) + self._min_interval
+        if wait:
+            time.sleep(wait)  # sleep outside the lock
+
     def _run(self):
         while True:
             job, brain = self._jobs.get()
             result = None
             try:
+                self._throttle()
                 result = _resolve(job, brain)
             except Exception:
                 result = None

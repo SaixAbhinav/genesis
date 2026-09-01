@@ -47,3 +47,32 @@ def test_threaded_queue_survives_resolve_exception():
     q.submit(_job(), FakeBrain(lambda c, a: {"choice": "eat", "reason": "ok"}))
     assert q.wait_idle(timeout=2.0)
     assert q.pop("a")["choice"] == "eat"
+
+
+def test_threaded_queue_pool_delivers_all_agents():
+    from genesis.mind.brain import FakeBrain
+    q = ThreadedThinkQueue(daily_budget=100, workers=4)
+    brain = FakeBrain(lambda c, a: {"choice": a[0]["id"], "reason": "r"})
+    for aid in ("a", "b", "c", "d"):
+        q.submit(DecisionJob(agent_id=aid, sim_minute=0,
+                             affordances=[{"id": "eat"}], context={}), brain)
+    assert q.wait_idle(timeout=3.0)
+    for aid in ("a", "b", "c", "d"):
+        assert q.pop(aid)["choice"] == "eat"
+    assert q.requests_today == 4
+
+
+def test_threaded_queue_rate_limiter_spaces_requests():
+    import time
+    from genesis.mind.brain import FakeBrain
+    q = ThreadedThinkQueue(daily_budget=100, workers=4, min_interval_s=0.05)
+    brain = FakeBrain(lambda c, a: {"choice": a[0]["id"], "reason": "r"})
+    t0 = time.monotonic()
+    for aid in ("a", "b", "c"):
+        q.submit(DecisionJob(agent_id=aid, sim_minute=0,
+                             affordances=[{"id": "eat"}], context={}), brain)
+    assert q.wait_idle(timeout=3.0)
+    # 3 requests with a 0.05s floor between starts -> >= ~0.10s even with a pool
+    assert time.monotonic() - t0 >= 0.08
+    for aid in ("a", "b", "c"):
+        assert q.pop(aid)["choice"] == "eat"

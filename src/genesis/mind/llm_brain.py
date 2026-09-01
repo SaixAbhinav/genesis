@@ -7,8 +7,12 @@ _SCHEMA = {"type": "object",
 
 
 def _prompt(context: dict, affordances: list[dict]) -> str:
+    # Drop "options" from the state dump — the Options list below already spells
+    # them out, and duplicating the full affordance JSON roughly doubles the
+    # prompt tokens (which is what the free-tier TPM limit is spent on).
+    state = {k: v for k, v in context.items() if k != "options"}
     lines = ["You are an agent in a survival world. Pick ONE option by its id.",
-             f"State: {json.dumps(context, default=str)}", "Options:"]
+             f"State: {json.dumps(state, default=str)}", "Options:"]
     for a in affordances:
         lines.append(f"- {a['id']}: {a.get('label','')} ({a.get('dir','')}, {a.get('dist','')})")
     lines.append('Reply JSON: {"choice": "<id>", "reason": "<one short line>"}')
