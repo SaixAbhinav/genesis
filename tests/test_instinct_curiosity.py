@@ -26,7 +26,7 @@ def test_experiments_with_held_materials():
 
 
 def test_builds_campfire_when_fire_known_and_wood_available():
-    a = Agent(id="a", name="A", x=5, y=5, knowledge=["fire", "charcoal"],
+    a = Agent(id="a", name="A", x=5, y=5, knowledge=["fire"],
               inventory={"wood": 2})
     act = choose_action(a, world(a), M, S, random.Random(1), G)
     assert act == {"action": "build", "structure": "campfire"}

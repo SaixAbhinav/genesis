@@ -8,7 +8,7 @@
      "prereqs": {"knowledge": ["fire"]}, "kind": "knowledge", "min_items": 1},
     {"name": "metal_ingot", "requires": ["metallic", "hot_burning"], "prereqs": {},
      "kind": "item", "produces": "metal_ingot", "min_items": 2},
-    {"name": "charcoal", "requires": ["flammable"],
+    {"name": "charcoal", "requires": ["flammable", "fibrous"],
      "prereqs": {"knowledge": ["fire"]}, "kind": "item",
      "produces": "charcoal", "min_items": 1},
     {"name": "metal_tools", "requires": ["metallic", "hard"],
