@@ -203,4 +203,6 @@ class Engine:
         return {"persona": agent.persona, "needs": vars(agent.needs),
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
+                "materials": {it: sorted(self.props.props_of(it))
+                              for it in agent.inventory if agent.inventory[it] > 0},
                 "known": list(agent.knowledge), "options": menu}
