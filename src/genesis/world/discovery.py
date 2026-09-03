@@ -1,5 +1,4 @@
 import json
-from collections import Counter
 from pathlib import Path
 
 
@@ -49,12 +48,21 @@ class DiscoveryGraph:
         return None, None
 
     def match(self, items: list[str], knowledge: list[str]) -> str | None:
-        have = Counter(items)
+        if self.props is None:
+            return None
+        have = set(items)
         for recipe in self.recipes:
-            need = Counter(recipe["items"])
-            if all(have[k] >= n for k, n in need.items()) and \
-                    all(req in knowledge for req in recipe.get("requires", [])):
-                return recipe["result"]
+            if recipe.get("kind", "knowledge") != "item" \
+                    and recipe["name"] in knowledge:
+                continue
+            if any(t not in knowledge
+                   for t in recipe.get("prereqs", {}).get("knowledge", [])):
+                continue
+            cover = covering_subset(have, recipe.get("requires", []),
+                                    self.props.props_of)
+            if cover is None or len(cover) < recipe.get("min_items", 1):
+                continue
+            return recipe["name"]
         return None
 
     def buildable(self, name: str) -> dict | None:

@@ -148,8 +148,12 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
         if r is None:
             return _finish(agent, {"type": "gather_failed", "agent": agent.id,
                                    "resource": rtype, "reason": "nothing here"})
-        yield_n = 1 + (settings["stone_tools_gather_bonus"]
-                       if "stone_tools" in agent.knowledge else 0)
+        if "metal_tools" in agent.knowledge:
+            yield_n = 1 + settings["metal_tools_gather_bonus"]
+        elif "stone_tools" in agent.knowledge:
+            yield_n = 1 + settings["stone_tools_gather_bonus"]
+        else:
+            yield_n = 1
         yield_n = min(yield_n, r.qty)
         r.qty -= yield_n
         agent.inventory[rtype] = agent.inventory.get(rtype, 0) + yield_n
@@ -197,28 +201,40 @@ def step_action(agent: Agent, state: WorldState, world_map: WorldMap,
                                "seen_agents": seen})
 
     if verb == "experiment_with":
-        if graph is not None:
-            result = graph.match(action["items"], agent.knowledge)
-        else:
-            result = None
-        if result is None and magic is not None:
-            result = magic.discoverable(action["items"], agent.knowledge)
-            if result is not None:
-                agent.knowledge.append(result)
-                spell = magic.spell(result)
-                agent.attr_rank.setdefault(spell["attribute"], 0)
-                agent.attr_xp.setdefault(spell["attribute"], 0.0)
-                return _finish(agent, {"type": "discovered", "agent": agent.id,
-                                       "discovery": result})
-        if result is None:
-            return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
-                                   "items": action["items"]})
-        if result in agent.knowledge:
-            return _finish(agent, {"type": "experiment_known", "agent": agent.id,
-                                   "discovery": result})
-        agent.knowledge.append(result)
-        return _finish(agent, {"type": "discovered", "agent": agent.id,
-                               "discovery": result})
+        ca = agent.current_action
+        if "experiment_until" not in ca:
+            ca["experiment_until"] = m + settings.get("experiment_minutes", 15)
+            return []
+        if m < ca["experiment_until"]:
+            return []
+        items = action["items"]
+        recipe, cover = graph.resolve(items, agent) if graph is not None else (None, None)
+        if recipe is not None:
+            for it in cover:
+                agent.inventory[it] -= 1
+            if recipe.get("kind") == "item":
+                prod = recipe["produces"]
+                agent.inventory[prod] = agent.inventory.get(prod, 0) + 1
+                first = recipe["name"] not in agent.knowledge
+                if first:
+                    agent.knowledge.append(recipe["name"])
+                return _finish(agent, {"type": "crafted", "agent": agent.id,
+                                       "produces": prod, "discovery": recipe["name"],
+                                       "first": first})
+            agent.knowledge.append(recipe["name"])
+            return _finish(agent, {"type": "discovered", "agent": agent.id,
+                                   "discovery": recipe["name"]})
+        spell, cover = magic.resolve(items, agent) if magic is not None else (None, None)
+        if spell is not None:
+            for it in cover:
+                agent.inventory[it] -= 1
+            agent.knowledge.append(spell["name"])
+            agent.attr_rank.setdefault(spell["attribute"], 0)
+            agent.attr_xp.setdefault(spell["attribute"], 0.0)
+            return _finish(agent, {"type": "discovered", "agent": agent.id,
+                                   "discovery": spell["name"]})
+        return _finish(agent, {"type": "experiment_failed", "agent": agent.id,
+                               "items": items})
 
     if verb == "build":
         spec = graph.buildable(action["structure"])
