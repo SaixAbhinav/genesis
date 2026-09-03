@@ -36,30 +36,14 @@ def test_no_gather_for_resource_on_other_layer():
     assert not any(o["verb"] == "gather" for o in opts)
 
 
-_P = PropertyBook({"wood": ["flammable"], "flint": ["sparks"]})
-
-
-def test_offers_experiment_when_recipe_matches_and_result_unknown():
-    g = DiscoveryGraph(
-        recipes=[{"name": "fire", "requires": ["flammable", "sparks"],
-                  "prereqs": {}, "kind": "knowledge", "min_items": 2}],
-        buildables={}, props=_P)
+def test_experiment_offered_without_success_precheck():
+    g = DiscoveryGraph(recipes=[], buildables={},
+                       props=PropertyBook({"wood": ["flammable"], "flint": ["sparks"]}))
     a = _agent(inventory={"wood": 1, "flint": 1})
     st = WorldState(0, 1, [a])
-    opts = affordances(a, st, WM, S, graph=g)
-    exp = [o for o in opts if o["verb"] == "experiment_with"]
-    assert exp and set(exp[0]["params"]["items"]) == {"wood", "flint"}
-
-
-def test_no_experiment_when_result_already_known():
-    g = DiscoveryGraph(
-        recipes=[{"name": "fire", "requires": ["flammable", "sparks"],
-                  "prereqs": {}, "kind": "knowledge", "min_items": 2}],
-        buildables={}, props=_P)
-    a = _agent(inventory={"wood": 1, "flint": 1}, knowledge=["fire"])
-    st = WorldState(0, 1, [a])
-    opts = affordances(a, st, WM, S, graph=g)
-    assert not any(o["verb"] == "experiment_with" for o in opts)
+    opts = affordances(a, st, WM, {**S, "experiment_max_items": 6,
+                                   "experiment_affordance_cap": 10}, graph=g)
+    assert any(o["id"] == "experiment:flint+wood" for o in opts)
 
 
 def test_offers_build_campfire_when_known_and_materials_held():
