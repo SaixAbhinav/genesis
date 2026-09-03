@@ -45,3 +45,21 @@ def test_catch_up_submits_no_llm_jobs():
                  queue=q)
     eng.advance(20, live=False)
     assert q.requests_today == 0   # no LLM jobs during catch-up
+
+
+def test_from_configs_minds_defaults_to_inline_queue(monkeypatch):
+    # Batch observation runs must use the synchronous InlineQueue: with the
+    # async ThreadedThinkQueue, engine.advance outruns the workers and every
+    # decision returns stale, so LLM minds never actually drive.
+    from genesis.mind.queue import InlineQueue
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+    eng = Engine.from_configs("configs", minds=True)
+    assert isinstance(eng.queue, InlineQueue)
+
+
+def test_from_configs_minds_threaded_flag_opts_into_threaded_queue(monkeypatch):
+    # The async queue stays available for a future real-time/paced loop.
+    from genesis.mind.queue import ThreadedThinkQueue
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+    eng = Engine.from_configs("configs", minds=True, threaded=True)
+    assert isinstance(eng.queue, ThreadedThinkQueue)
