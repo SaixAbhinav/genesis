@@ -120,7 +120,8 @@ class Engine:
                 continue
             wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
-            events += tick_needs(agent, minute, self.settings, near_warmth=near)
+            events += tick_needs(agent, minute, self.settings,
+                                 near_warmth=near, props_of=self.props.props_of)
             layers = self.settings.get("layers", []) if self.settings else []
             if layers and 0 <= agent.layer < len(layers):
                 lc = layers[agent.layer]
