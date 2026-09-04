@@ -17,9 +17,10 @@ def _top_rank(agent) -> str:
 
 
 def run_sim(days: float, db_path: str | Path, seed: int = 42,
-            minds: bool = False, threaded: bool = False) -> dict:
+            minds: bool = False, threaded: bool = False,
+            scenario: str | None = None) -> dict:
     engine = Engine.from_configs(CONFIG_DIR, seed=seed, minds=minds,
-                                 threaded=threaded)
+                                 threaded=threaded, scenario_dir=scenario)
     conn = connect(db_path)
     saved = load_state(conn)
     if saved is not None:
@@ -62,9 +63,12 @@ def main() -> None:
                    help="Use the async ThreadedThinkQueue instead of the default "
                         "synchronous InlineQueue. In batch runs decisions arrive "
                         "too late and are dropped; only useful for a real-time loop.")
+    p.add_argument("--scenario", default=None,
+                   help="Path to a scenario config dir (overrides map/agents/races)")
     args = p.parse_args()
     print(json.dumps(
-        run_sim(args.days, args.db, args.seed, args.minds, args.threaded),
+        run_sim(args.days, args.db, args.seed, args.minds, args.threaded,
+                args.scenario),
         indent=2))
 
 

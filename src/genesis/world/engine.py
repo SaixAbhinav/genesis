@@ -44,7 +44,8 @@ class Engine:
     @classmethod
     def from_configs(cls, config_dir: str | Path = "configs",
                       seed: int = 42, sim_minutes: int = 720,
-                      minds: bool = False, threaded: bool = False) -> "Engine":
+                      minds: bool = False, threaded: bool = False,
+                      scenario_dir: str | Path | None = None) -> "Engine":
         """Build a fully-wired Engine from the on-disk config directory.
 
         Loads settings.json, layers.json (+ each layer's map/resources file),
@@ -54,9 +55,10 @@ class Engine:
         ready-to-tick Engine with a fresh WorldState.
         """
         config_dir = Path(config_dir)
+        world_dir = Path(scenario_dir) if scenario_dir is not None else config_dir
         settings = json.loads((config_dir / "settings.json").read_text(encoding="utf-8"))
         layers_cfg = json.loads(
-            (config_dir / "layers.json").read_text(encoding="utf-8"))["layers"]
+            (world_dir / "layers.json").read_text(encoding="utf-8"))["layers"]
 
         maps: list[WorldMap] = []
         resources: list[Resource] = []
@@ -64,7 +66,7 @@ class Engine:
         layers_out: list[dict] = []
 
         for i, layer in enumerate(layers_cfg):
-            map_path = config_dir / layer["map"]
+            map_path = world_dir / layer["map"]
             maps.append(WorldMap.from_file(map_path))
             map_data = json.loads(map_path.read_text(encoding="utf-8"))
             for r in map_data.get("resources", []):
@@ -85,8 +87,26 @@ class Engine:
 
         state = WorldState(
             sim_minutes=sim_minutes, seed=seed,
-            agents=load_agents(config_dir / "agents.json"),
+            agents=load_agents(world_dir / "agents.json"),
             resources=resources)
+
+        races_path = world_dir / "races.json"
+        if races_path.exists():
+            races = json.loads(races_path.read_text(encoding="utf-8"))["races"]
+            for ag in state.agents:
+                spec = races.get(ag.race)
+                if not spec:
+                    continue
+                for tech in spec.get("starting_knowledge", []):
+                    if tech not in ag.knowledge:
+                        ag.knowledge.append(tech)
+                for item, n in spec.get("starting_inventory", {}).items():
+                    ag.inventory[item] = ag.inventory.get(item, 0) + n
+                ag.warmth_decay_mult = spec.get("traits", {}).get(
+                    "warmth_decay_mult", 1.0)
+                if spec.get("blurb"):
+                    ag.persona = (spec["blurb"] + " " + ag.persona).strip()
+
         props = PropertyBook.from_file(config_dir / "properties.json")
         magic = MagicBook.from_file(config_dir / "magic.json", props)
         graph = DiscoveryGraph.from_file(config_dir / "discoveries.json", props)

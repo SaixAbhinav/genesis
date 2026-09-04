@@ -1,0 +1,12 @@
+{
+  "agents": [
+    {"id": "ash1", "name": "Ash", "x": 1, "y": 3, "race": "ashfolk", "brain": "default",
+     "persona": "curious and cautious"},
+    {"id": "ash2", "name": "Ember", "x": 2, "y": 5, "race": "ashfolk", "brain": "default",
+     "persona": "bold and forthright"},
+    {"id": "moss1", "name": "Fern", "x": 19, "y": 3, "race": "mosskin", "brain": "default",
+     "persona": "wary of strangers"},
+    {"id": "moss2", "name": "Bram", "x": 18, "y": 5, "race": "mosskin", "brain": "default",
+     "persona": "friendly and open"}
+  ]
+}
