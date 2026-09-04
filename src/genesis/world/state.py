@@ -34,6 +34,9 @@ class Agent:
     attr_xp: dict[str, float] = field(default_factory=dict)
     purified_until: int = 0
     negate_fall_until: int = 0
+    # First-contact races
+    race: str = ""
+    warmth_decay_mult: float = 1.0
 
 
 @dataclass
