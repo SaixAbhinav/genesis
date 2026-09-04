@@ -1,4 +1,5 @@
 from genesis.world.grid import WorldMap
+from genesis.world.perception import perceive_agents
 from genesis.world.state import Agent, WorldState
 
 
@@ -107,6 +108,20 @@ def affordances(agent: Agent, state: WorldState, world_map: WorldMap,
             opts.append({"id": verb, "verb": verb, "params": {},
                          "label": f"{verb} via the layer link",
                          "dir": _dir(dx, dy), "dist": abs(dx) + abs(dy)})
+
+    # social: approach/avoid perceived agents — resolve to move_to (no new action verb)
+    radius = settings.get("perception_radius", 6) if settings else 6
+    cap = settings.get("perception_affordance_cap", 3) if settings else 3
+    for other in perceive_agents(agent, state, radius)[:cap]:
+        who = f"the {other['race']} " if other["race"] else ""
+        opts.append({"id": f"approach:{other['name']}", "verb": "approach",
+                     "params": {"target": other["name"]},
+                     "label": f"approach {who}{other['name']} to the {other['dir']}",
+                     "dir": other["dir"], "dist": other["dist"]})
+        opts.append({"id": f"avoid:{other['name']}", "verb": "avoid",
+                     "params": {"target": other["name"]},
+                     "label": f"move away from {who}{other['name']} to the {other['dir']}",
+                     "dir": other["dir"], "dist": other["dist"]})
 
     # sleep and observe are always available
     opts.append({"id": "sleep", "verb": "sleep", "params": {},
