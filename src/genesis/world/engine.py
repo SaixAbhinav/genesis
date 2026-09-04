@@ -12,6 +12,7 @@ from genesis.world.grid import WorldMap
 from genesis.world.hazards import miasma_tick, creature_damage
 from genesis.world.magic import MagicBook
 from genesis.world.needs import tick_needs
+from genesis.world.perception import perceive_agents
 from genesis.world.properties import PropertyBook
 from genesis.world.state import Resource, WorldState, load_agents
 from genesis.world.structures import has_warmth_source
@@ -36,6 +37,8 @@ class Engine:
         self.queue = queue
         self.instinct = InstinctBrain()
         self._last_submit: dict[str, int] = {}
+        self._contacted: dict[str, set] = {}
+        self._force_decide: set = set()
         self._live = True
 
     @classmethod
@@ -127,6 +130,7 @@ class Engine:
                 lc = layers[agent.layer]
                 events += miasma_tick(agent, lc, minute)
                 events += creature_damage(agent, lc)
+            events += self._contact_check(agent, minute)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 action, extra = self._decide(agent, wm)
                 agent.current_action = action
@@ -145,9 +149,33 @@ class Engine:
             events += self.tick()
         return events
 
+    def _contact_check(self, agent, minute) -> list[dict]:
+        # First perception of a foreign race preempts the agent and marks it for
+        # a forced decision. Live sim only (never ADR-0001 catch-up); only raced
+        # agents make contact. A Brain is NOT required to EMIT the event (so the
+        # deterministic path is testable) — only to react to it (see _decide).
+        if not self._live or not agent.race:
+            return []
+        radius = self.settings.get("perception_radius", 6)
+        seen = self._contacted.setdefault(agent.id, set())
+        events = []
+        for other in perceive_agents(agent, self.state, radius):
+            r = other["race"]
+            if r and r != agent.race and r not in seen:
+                seen.add(r)
+                events.append({"type": "contact", "agent": agent.id, "race": r,
+                               "other": other["name"], "minute": minute})
+        if events:
+            agent.goal = None
+            agent.current_action = None
+            self._force_decide.add(agent.id)
+        return events
+
     def _decide(self, agent, wm):
         minute = self.state.sim_minutes
         extra: list[dict] = []
+        forced = agent.id in self._force_decide
+        self._force_decide.discard(agent.id)
         # 1. drive an active goal
         if agent.goal is not None:
             act = self._drive(agent, wm)
@@ -161,12 +189,12 @@ class Engine:
             menu = affordances(agent, self.state, wm, self.settings,
                                self.graph, self.magic)
             landed = self._consume(agent, wm, menu, minute, extra)
-            if landed is not None:
+            if landed is not None and not forced:
                 return landed, extra
             cooldown = self.settings.get("decision_cooldown_min", 0)
-            if (not self.queue.pending(agent.id)
-                    and minute - self._last_submit.get(agent.id, -10**9) >= cooldown
-                    and menu):
+            ready = (not self.queue.pending(agent.id)
+                     and minute - self._last_submit.get(agent.id, -10**9) >= cooldown)
+            if (forced or ready) and menu:
                 ctx = self._context(agent, menu)
                 self.queue.submit(DecisionJob(agent.id, minute, menu, ctx), brain)
                 self._last_submit[agent.id] = minute
@@ -207,9 +235,12 @@ class Engine:
         return self._drive(agent, wm)
 
     def _context(self, agent, menu):
+        radius = self.settings.get("perception_radius", 6)
         return {"persona": agent.persona, "needs": vars(agent.needs),
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
                 "materials": {it: sorted(self.props.props_of(it))
                               for it in agent.inventory if agent.inventory[it] > 0},
+                "race": agent.race,
+                "nearby": perceive_agents(agent, self.state, radius),
                 "known": list(agent.knowledge), "options": menu}
