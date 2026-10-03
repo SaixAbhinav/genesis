@@ -16,6 +16,12 @@ stone tools, and cooked food; build campfires and huts; and gain real payoffs
     uv run pytest
     uv run python -m genesis.cli --days 2 --db world.db
 
+First-contact race experiment (two races spawned apart; use its own `--db`,
+since an existing db's saved state replaces the scenario's agents):
+
+    uv run python -m genesis.cli --days 2 --db contact.db --scenario configs/scenarios/first-contact
+    uv run python scripts/observe_first_contact.py 2   # LLM minds; needs GROQ_API_KEY
+
 ## Docs
 
 - Design spec: docs/superpowers/specs/2026-08-29-genesis-phase1-design.md
