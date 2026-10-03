@@ -50,6 +50,7 @@ def tick_needs(agent: Agent, sim_minutes: int, settings: dict,
                 "insulating" in props_of(it)
                 for it, q in agent.inventory.items() if q > 0):
             rate *= settings.get("insulation_warmth_factor", 1.0)
+        rate *= agent.warmth_decay_mult
         n.warmth = _clamp(n.warmth - rate)
 
     if min(n.hunger, n.energy, n.warmth) <= 0:

@@ -17,6 +17,20 @@ def _move_toward(agent, x, y, world_map):
     return None
 
 
+def _agent_by_name(state, name):
+    return next((a for a in state.agents if a.name == name), None)
+
+
+def _move_away(agent, x, y, world_map):
+    dx = 0 if agent.x == x else (1 if agent.x > x else -1)
+    dy = 0 if agent.y == y else (1 if agent.y > y else -1)
+    for tx, ty in ((agent.x + dx, agent.y + dy),
+                   (agent.x + dx, agent.y), (agent.x, agent.y + dy)):
+        if (tx, ty) != (agent.x, agent.y) and world_map.walkable(tx, ty):
+            return {"action": "move_to", "x": tx, "y": ty}
+    return None
+
+
 def resolve_goal(agent: Agent, goal: dict, state: WorldState, world_map: WorldMap,
                  settings: dict, graph=None, magic=None) -> dict | None:
     verb = goal["verb"]
@@ -50,4 +64,18 @@ def resolve_goal(agent: Agent, goal: dict, state: WorldState, world_map: WorldMa
         if [agent.x, agent.y] == tile:
             return {"action": verb}
         return _move_toward(agent, tile[0], tile[1], world_map)
+
+    if verb in ("approach", "avoid"):
+        radius = settings.get("perception_radius", 6)
+        target = _agent_by_name(state, p["target"])
+        if target is None or target.status == "dead" \
+                or target.layer != agent.layer:
+            return None
+        if abs(target.x - agent.x) + abs(target.y - agent.y) > radius:
+            return None
+        if verb == "approach":
+            if _adjacent(agent, target.x, target.y, world_map):
+                return None
+            return _move_toward(agent, target.x, target.y, world_map)
+        return _move_away(agent, target.x, target.y, world_map)
     return None

@@ -1,0 +1,24 @@
+{
+  "rows": [
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG",
+    "GGGGGGGGGGGGGGGGGGGGG"
+  ],
+  "resources": [
+    {"type": "ember_dust", "x": 1, "y": 4, "qty": 10},
+    {"type": "flint", "x": 2, "y": 2, "qty": 10},
+    {"type": "wood", "x": 1, "y": 6, "qty": 20},
+    {"type": "thick_moss", "x": 19, "y": 4, "qty": 10},
+    {"type": "arcane_moss", "x": 18, "y": 2, "qty": 10},
+    {"type": "wood", "x": 19, "y": 6, "qty": 20},
+    {"type": "berries", "x": 10, "y": 3, "qty": 40},
+    {"type": "berries", "x": 10, "y": 5, "qty": 40},
+    {"type": "water", "x": 10, "y": 7, "qty": 9999}
+  ]
+}
