@@ -54,6 +54,31 @@ def test_contact_fires_once_per_race():
     assert not any(e["type"] == "contact" for e in later)
 
 
+def test_forced_contact_decision_carries_notice_only_once():
+    a = Agent(id="a", name="Ash", x=1, y=1, race="ashfolk", brain="fake")
+    b = Agent(id="b", name="Moss", x=3, y=1, race="mosskin", brain="fake")
+    ash_ctxs = []
+
+    def chooser(ctx, affs):
+        if ctx["race"] == "ashfolk":
+            ash_ctxs.append(dict(ctx))
+        return {"choice": "observe", "reason": "watch"}
+
+    st = WorldState(0, 7, [a, b])
+    settings = {**BASE, "decision_cooldown_min": 0,
+                "race_names": {"ashfolk": "Ashfolk", "mosskin": "Mosskin"}}
+    eng = Engine(st, settings=settings, maps=[WM],
+                 brains={x.id: FakeBrain(chooser) for x in (a, b)},
+                 queue=InlineQueue())
+    for _ in range(3):
+        eng.tick()
+    assert len(ash_ctxs) >= 2
+    first, later = ash_ctxs[0], ash_ctxs[1:]
+    assert len(first["notice"]) == 1
+    assert "Moss" in first["notice"][0] and "Mosskin" in first["notice"][0]
+    assert all("notice" not in c for c in later)
+
+
 def test_no_contact_between_same_or_raceless_agents():
     a = Agent(id="a", name="A", x=1, y=1, brain="fake")
     b = Agent(id="b", name="B", x=3, y=1, brain="fake")

@@ -10,9 +10,14 @@ def _prompt(context: dict, affordances: list[dict]) -> str:
     # Drop "options" from the state dump — the Options list below already spells
     # them out, and duplicating the full affordance JSON roughly doubles the
     # prompt tokens (which is what the free-tier TPM limit is spent on).
-    state = {k: v for k, v in context.items() if k != "options"}
-    lines = ["You are an agent in a survival world. Pick ONE option by its id.",
-             f"State: {json.dumps(state, default=str)}", "Options:"]
+    # A "notice" is something that just happened (e.g. first contact). It gets its
+    # own line ahead of the State dump so it registers instead of being one more
+    # JSON field.
+    state = {k: v for k, v in context.items() if k not in ("options", "notice")}
+    lines = ["You are an agent in a survival world. Pick ONE option by its id."]
+    for note in context.get("notice", []):
+        lines.append(f"Just happened: {note}")
+    lines += [f"State: {json.dumps(state, default=str)}", "Options:"]
     for a in affordances:
         lines.append(f"- {a['id']}: {a.get('label','')} ({a.get('dir','')}, {a.get('dist','')})")
     lines.append('Reply JSON: {"choice": "<id>", "reason": "<one short line>"}')

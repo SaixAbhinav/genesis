@@ -40,3 +40,12 @@ def test_prompt_does_not_duplicate_options_in_state():
     p = _prompt(ctx, affs)
     assert '"options"' not in p          # not dumped inside the State JSON
     assert p.count("- eat:") == 1        # listed exactly once, in Options
+
+
+def test_prompt_renders_notice_as_its_own_line():
+    from genesis.mind.llm_brain import _prompt
+    note = "You have just encountered Fern of the Mosskin people for the first time."
+    p = _prompt({"persona": "curious", "notice": [note]}, AFFS)
+    assert f"Just happened: {note}" in p.splitlines()
+    assert '"notice"' not in p           # not buried in the State JSON
+    assert p.index("Just happened:") < p.index("State:")
