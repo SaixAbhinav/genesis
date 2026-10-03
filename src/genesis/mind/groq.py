@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.error
 import urllib.request
 from genesis.mind.brain import BrainError
 
@@ -9,8 +10,14 @@ _URL = "https://api.groq.com/openai/v1/chat/completions"
 def _http_post(url: str, headers: dict, body: dict) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(),
                                  headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        # str(e) is only "HTTP Error 429: ..."; the body says why (rate limit,
+        # json_validate_failed, ...), which is what a failure report needs.
+        detail = e.read().decode(errors="replace")[:300]
+        raise BrainError(f"HTTP {e.code}: {detail}") from e
 
 
 class GroqAdapter:

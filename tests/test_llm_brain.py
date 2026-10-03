@@ -55,3 +55,17 @@ def test_prompt_states_needs_scale():
     from genesis.mind.llm_brain import _prompt
     p = _prompt({"needs": {"satiety": 100.0}}, AFFS)
     assert "100 means fully satisfied" in p and "0 means critical" in p
+
+
+def test_brain_error_names_the_last_invalid_reply():
+    p = StubProvider([{"choice": "fly"}, {"choice": "swim"}])
+    with pytest.raises(BrainError, match="swim"):
+        LLMBrain(p, "m").choose({}, AFFS)
+
+
+def test_brain_error_names_provider_exception():
+    class Boom:
+        def complete(self, prompt, schema):
+            raise ValueError("bad json")
+    with pytest.raises(BrainError, match="ValueError: bad json"):
+        LLMBrain(Boom(), "m").choose({}, AFFS)

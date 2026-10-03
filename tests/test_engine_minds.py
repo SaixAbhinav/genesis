@@ -128,3 +128,15 @@ def test_context_presents_hunger_as_satiety():
     _engine(a, chooser=lambda c, affs: (seen.append(c) or
                                         {"choice": "observe", "reason": ""})).tick()
     assert seen[0]["needs"] == {"satiety": 30.0, "energy": 80.0, "warmth": 90.0}
+
+
+def test_failed_brain_call_is_reported_not_swallowed():
+    def boom(c, affs):
+        raise RuntimeError("rate limited")
+    a = Agent(id="a", name="A", x=0, y=0, brain="fake")
+    ev = _engine(a, chooser=boom).tick()
+    fails = [e for e in ev if e["type"] == "brain_failed"]
+    assert len(fails) == 1 and fails[0]["agent"] == "a"
+    assert fails[0]["error"] == "RuntimeError: rate limited"
+    assert not any(e["type"] == "decided" for e in ev)
+    assert a.current_action is not None      # fell back to Instinct and kept acting

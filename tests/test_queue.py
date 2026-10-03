@@ -14,11 +14,31 @@ def test_inline_queue_resolves_immediately():
     assert out["choice"] == "sleep" and out["reason"] == "tired" and out["sim_minute"] == 0
 
 
-def test_inline_queue_drops_invalid_choice():
+def test_inline_queue_reports_invalid_choice():
+    # Not a usable decision — but reported rather than silently dropped, so the
+    # engine can emit a brain_failed event.
     q = InlineQueue()
     q.submit(_job(), FakeBrain(lambda c, a: {"choice": "fly", "reason": "nope"}))
-    assert q.pop("a") is None
+    out = q.pop("a")
+    assert "choice" not in out and "fly" in out["error"]
     assert q.pending("a") is False
+
+
+def test_inline_queue_reports_brain_exception():
+    def boom(c, a):
+        raise RuntimeError("rate limited")
+    q = InlineQueue()
+    q.submit(_job(minute=7), FakeBrain(boom))
+    assert q.pop("a") == {"error": "RuntimeError: rate limited", "sim_minute": 7}
+
+
+def test_threaded_queue_reports_brain_exception():
+    def boom(c, a):
+        raise RuntimeError("rate limited")
+    q = ThreadedThinkQueue(daily_budget=100)
+    q.submit(_job(), FakeBrain(boom))
+    assert q.wait_idle(timeout=2.0)
+    assert q.pop("a")["error"] == "RuntimeError: rate limited"
 
 
 def test_threaded_queue_delivers_result():

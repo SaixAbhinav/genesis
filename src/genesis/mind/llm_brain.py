@@ -33,11 +33,14 @@ class LLMBrain:
     def choose(self, context: dict, affordances: list[dict]) -> dict:
         ids = {a["id"] for a in affordances}
         prompt = _prompt(context, affordances)
+        last = "no reply"
         for _ in range(2):  # one try + one retry
             try:
                 out = self.provider.complete(prompt, _SCHEMA)
-            except Exception:
-                out = None
+            except Exception as e:
+                last = f"{type(e).__name__}: {e}"
+                continue
             if isinstance(out, dict) and out.get("choice") in ids:
                 return {"choice": out["choice"], "reason": out.get("reason", "")}
-        raise BrainError("no valid choice after retry")
+            last = f"invalid reply {out!r}"
+        raise BrainError(f"no valid choice after retry: {last[:300]}")

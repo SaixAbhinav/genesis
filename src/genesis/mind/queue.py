@@ -12,14 +12,21 @@ class DecisionJob:
     context: dict
 
 
-def _resolve(job: DecisionJob, brain) -> dict | None:
-    ids = {a["id"] for a in job.affordances}
+def _failure(job: DecisionJob, error: str) -> dict:
+    return {"error": error, "sim_minute": job.sim_minute}
+
+
+def _resolve(job: DecisionJob, brain) -> dict:
+    # Never raises. A failed decision comes back as {"error": ...} so the engine
+    # can report it, instead of the agent silently riding Instinct.
     try:
+        ids = {a["id"] for a in job.affordances}
         out = brain.choose(job.context, job.affordances)
-    except Exception:
-        return None
+    except Exception as e:
+        return _failure(job, f"{type(e).__name__}: {e}")
     if not isinstance(out, dict) or out.get("choice") not in ids:
-        return None
+        bad = out.get("choice") if isinstance(out, dict) else out
+        return _failure(job, f"invalid choice {bad!r}")
     return {"choice": out["choice"], "reason": out.get("reason", ""),
             "sim_minute": job.sim_minute}
 
@@ -32,10 +39,8 @@ class InlineQueue:
 
     def submit(self, job: DecisionJob, brain) -> None:
         self._pending.add(job.agent_id)
-        result = _resolve(job, brain)
+        self._inbox[job.agent_id] = _resolve(job, brain)
         self._pending.discard(job.agent_id)
-        if result is not None:
-            self._inbox[job.agent_id] = result
 
     def pending(self, agent_id: str) -> bool:
         return agent_id in self._pending
@@ -92,16 +97,14 @@ class ThreadedThinkQueue:
     def _run(self):
         while True:
             job, brain = self._jobs.get()
-            result = None
             try:
                 self._throttle()
                 result = _resolve(job, brain)
-            except Exception:
-                result = None
+            except Exception as e:  # _resolve never raises; keeps the worker alive
+                result = _failure(job, f"{type(e).__name__}: {e}")
             with self._lock:
                 self._pending.discard(job.agent_id)
-                if result is not None:
-                    self._inbox[job.agent_id] = result
+                self._inbox[job.agent_id] = result
             self._jobs.task_done()
 
     def pending(self, agent_id: str) -> bool:

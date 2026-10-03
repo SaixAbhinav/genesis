@@ -258,6 +258,10 @@ class Engine:
         d = self.queue.pop(agent.id)
         if d is None:
             return None
+        if "error" in d:
+            extra.append({"type": "brain_failed", "agent": agent.id,
+                          "error": d["error"], "minute": minute})
+            return None
         aff = next((o for o in menu if o["id"] == d["choice"]), None)
         stale = self.settings.get("decision_stale_min", 10**9)
         if aff is None or minute - d["sim_minute"] > stale:
