@@ -270,7 +270,11 @@ class Engine:
 
     def _context(self, agent, menu):
         radius = self.settings.get("perception_radius", 6)
-        return {"persona": agent.persona, "needs": vars(agent.needs),
+        n = agent.needs
+        # Needs.hunger is satiety (100 = fully fed); an LLM reads "hunger": 100 as
+        # starving, so the Brain sees it as "satiety".
+        needs = {"satiety": n.hunger, "energy": n.energy, "warmth": n.warmth}
+        return {"persona": agent.persona, "needs": needs,
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
                 "materials": {it: sorted(self.props.props_of(it))

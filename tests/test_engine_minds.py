@@ -117,3 +117,14 @@ def test_instinct_acts_while_no_brain_result_available():
                  queue=DeadQueue())
     eng.advance(3)
     assert a.current_action is not None or a.goal is None  # it kept acting via instinct
+
+
+def test_context_presents_hunger_as_satiety():
+    # Engine "hunger" is satiety (100 = fully fed). An LLM reads "hunger": 100 as
+    # starving, so the Brain must see it under an unambiguous name.
+    seen = []
+    a = Agent(id="a", name="A", x=0, y=0, brain="fake")
+    a.needs.hunger, a.needs.energy, a.needs.warmth = 30.0, 80.0, 90.0
+    _engine(a, chooser=lambda c, affs: (seen.append(c) or
+                                        {"choice": "observe", "reason": ""})).tick()
+    assert seen[0]["needs"] == {"satiety": 30.0, "energy": 80.0, "warmth": 90.0}

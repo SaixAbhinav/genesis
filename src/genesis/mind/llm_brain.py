@@ -14,7 +14,8 @@ def _prompt(context: dict, affordances: list[dict]) -> str:
     # own line ahead of the State dump so it registers instead of being one more
     # JSON field.
     state = {k: v for k, v in context.items() if k not in ("options", "notice")}
-    lines = ["You are an agent in a survival world. Pick ONE option by its id."]
+    lines = ["You are an agent in a survival world. Pick ONE option by its id.",
+             "Needs run 0-100: 100 means fully satisfied, 0 means critical."]
     for note in context.get("notice", []):
         lines.append(f"Just happened: {note}")
     lines += [f"State: {json.dumps(state, default=str)}", "Options:"]

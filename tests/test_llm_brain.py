@@ -49,3 +49,9 @@ def test_prompt_renders_notice_as_its_own_line():
     assert f"Just happened: {note}" in p.splitlines()
     assert '"notice"' not in p           # not buried in the State JSON
     assert p.index("Just happened:") < p.index("State:")
+
+
+def test_prompt_states_needs_scale():
+    from genesis.mind.llm_brain import _prompt
+    p = _prompt({"needs": {"satiety": 100.0}}, AFFS)
+    assert "100 means fully satisfied" in p and "0 means critical" in p
