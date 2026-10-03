@@ -34,7 +34,7 @@ def test_experiment_discovers_spell_and_inits_rank():
     ev = _run(a, WorldState(0, 1, [a]), ["mana_shard"])
     assert "minor_heal" in a.knowledge and a.attr_rank["healing"] == 0
     assert any(e["type"] == "discovered" for e in ev)
-    assert a.inventory.get("mana_shard", 0) == 0        # reagent consumed
+    assert a.inventory.get("mana_shard", 0) == 0
 
 
 def test_substitution_discovers_kindle_from_ether_fire():

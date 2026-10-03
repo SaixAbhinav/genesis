@@ -4,6 +4,7 @@ from genesis.world.discovery import DiscoveryGraph
 from genesis.world.properties import PropertyBook
 from genesis.world.grid import WorldMap
 from genesis.world.magic import MagicBook
+from genesis.world.properties import PropertyBook
 from genesis.world.state import Agent, WorldState, Resource
 
 WM = WorldMap(["GGGG", "GGGG", "GGGG", "GGGG"])

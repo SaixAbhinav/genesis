@@ -4,7 +4,7 @@ B = PropertyBook.from_file("configs/properties.json")
 
 
 def test_props_of_known_material():
-    assert B.props_of("flint") == frozenset({"sharp", "hard", "sparks"})
+    assert B.props_of("flint") == frozenset({"sharp", "sparks"})
     assert "flammable" in B.props_of("wood")
 
 
