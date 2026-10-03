@@ -1,6 +1,7 @@
 # tests/test_affordances.py
 from genesis.world.affordances import affordances
 from genesis.world.discovery import DiscoveryGraph
+from genesis.world.properties import PropertyBook
 from genesis.world.grid import WorldMap
 from genesis.world.magic import MagicBook
 from genesis.world.properties import PropertyBook
