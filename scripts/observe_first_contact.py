@@ -3,8 +3,8 @@ LLM minds and prints the contact timeline, every Brain decision with its reason,
 and an hourly trace of how close the races are. Requires GROQ_API_KEY.
 
 Usage: uv run python scripts/observe_first_contact.py [days] [events.jsonl]
-The optional JSONL path receives every decision/contact event plus the hourly
-snapshots, so a run can be re-analysed without paying for another one.
+The optional JSONL path receives every decision/contact/brain_failed event plus
+the hourly snapshots, so a run can be re-analysed without paying for another one.
 """
 import json
 import sys
@@ -39,15 +39,28 @@ def main(days: float = 2.0, log_path: str | None = None) -> None:
                       "positions": {a.name: [a.x, a.y] for a in eng.state.agents}})
 
     decided = [e for e in events if e["type"] == "decided"]
+    failed = [e for e in events if e["type"] == "brain_failed"]
     by_key = {(e["agent"], e["minute"]): e for e in decided}
+    fail_key = {(e["agent"], e["minute"]): e for e in failed}
     print(f"=== first contact, {days} day(s), {len(eng.state.agents)} agents ===")
 
     print("\n-- contact timeline (with the decision it forced) --")
     for e in events:
         if e["type"] == "contact":
-            d = by_key.get((e["agent"], e["minute"]))
-            tail = f" -> {d['choice']}: {d['reason']}" if d else " -> (no Brain decision)"
+            key = (e["agent"], e["minute"])
+            if key in by_key:
+                tail = f" -> {by_key[key]['choice']}: {by_key[key]['reason']}"
+            elif key in fail_key:
+                tail = f" -> BRAIN FAILED: {fail_key[key]['error'][:120]}"
+            else:
+                tail = " -> (no Brain decision)"
             print(f"  min {e['minute']:5d}  {who[e['agent']]} meets {e['other']}{tail}")
+
+    print(f"\n-- brain failures ({len(failed)} of {len(failed) + len(decided)} calls) --")
+    if not failed:
+        print("  none")
+    for err, n in Counter(e["error"][:120] for e in failed).most_common():
+        print(f"  x{n}  {err}")
 
     print(f"\n-- every decision ({len(decided)}) --")
     for e in decided:
@@ -69,7 +82,7 @@ def main(days: float = 2.0, log_path: str | None = None) -> None:
     if log_path:
         with open(log_path, "w", encoding="utf-8") as f:
             for e in events:
-                if e["type"] in ("decided", "contact"):
+                if e["type"] in ("decided", "contact", "brain_failed"):
                     f.write(json.dumps(e) + "\n")
             for s in snaps:
                 f.write(json.dumps(s) + "\n")
