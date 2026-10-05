@@ -1,11 +1,14 @@
 from genesis.world.discovery import DiscoveryGraph
+from genesis.world.properties import PropertyBook
 
-G = DiscoveryGraph.from_file("configs/discoveries.json")
+P = PropertyBook.from_file("configs/properties.json")
+G = DiscoveryGraph.from_file("configs/discoveries.json", P)
 
 
 def test_match_simple_recipe():
     assert G.match(["flint", "wood"], []) == "fire"
-    assert G.match(["wood", "flint"], []) == "fire"     # order independent
+    assert G.match(["wood", "flint"], []) == "fire"          # order independent
+    assert G.match(["flint", "ember_dust"], []) == "fire"    # substitution
 
 
 def test_match_ignores_extra_items():

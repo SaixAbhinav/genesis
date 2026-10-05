@@ -12,6 +12,8 @@ from genesis.world.grid import WorldMap
 from genesis.world.hazards import miasma_tick, creature_damage
 from genesis.world.magic import MagicBook
 from genesis.world.needs import tick_needs
+from genesis.world.perception import perceive_agents
+from genesis.world.properties import PropertyBook
 from genesis.world.state import Resource, WorldState, load_agents
 from genesis.world.structures import has_warmth_source
 
@@ -21,25 +23,30 @@ class Engine:
                  settings: dict | None = None, graph: DiscoveryGraph | None = None,
                  maps: list[WorldMap] | None = None,
                  magic: dict | None = None, brains: dict | None = None,
-                 queue=None):
+                 queue=None, props=None):
         self.state = state
         if maps is None:
             maps = [world_map] if world_map is not None else []
         self.maps = maps
         self.settings = settings
         self.rng = random.Random(state.seed)
-        self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json")
+        self.props = props or PropertyBook.from_file("configs/properties.json")
+        self.graph = graph or DiscoveryGraph.from_file("configs/discoveries.json", self.props)
         self.magic = magic
         self.brains = brains or {}
         self.queue = queue
         self.instinct = InstinctBrain()
         self._last_submit: dict[str, int] = {}
+        self._contacted: dict[str, set] = {}
+        self._force_decide: set = set()
+        self._notices: dict[str, list] = {}
         self._live = True
 
     @classmethod
     def from_configs(cls, config_dir: str | Path = "configs",
                       seed: int = 42, sim_minutes: int = 720,
-                      minds: bool = False) -> "Engine":
+                      minds: bool = False, threaded: bool = False,
+                      scenario_dir: str | Path | None = None) -> "Engine":
         """Build a fully-wired Engine from the on-disk config directory.
 
         Loads settings.json, layers.json (+ each layer's map/resources file),
@@ -49,9 +56,10 @@ class Engine:
         ready-to-tick Engine with a fresh WorldState.
         """
         config_dir = Path(config_dir)
+        world_dir = Path(scenario_dir) if scenario_dir is not None else config_dir
         settings = json.loads((config_dir / "settings.json").read_text(encoding="utf-8"))
         layers_cfg = json.loads(
-            (config_dir / "layers.json").read_text(encoding="utf-8"))["layers"]
+            (world_dir / "layers.json").read_text(encoding="utf-8"))["layers"]
 
         maps: list[WorldMap] = []
         resources: list[Resource] = []
@@ -59,7 +67,7 @@ class Engine:
         layers_out: list[dict] = []
 
         for i, layer in enumerate(layers_cfg):
-            map_path = config_dir / layer["map"]
+            map_path = world_dir / layer["map"]
             maps.append(WorldMap.from_file(map_path))
             map_data = json.loads(map_path.read_text(encoding="utf-8"))
             for r in map_data.get("resources", []):
@@ -80,25 +88,52 @@ class Engine:
 
         state = WorldState(
             sim_minutes=sim_minutes, seed=seed,
-            agents=load_agents(config_dir / "agents.json"),
+            agents=load_agents(world_dir / "agents.json"),
             resources=resources)
-        magic = MagicBook.from_file(config_dir / "magic.json")
-        graph = DiscoveryGraph.from_file(config_dir / "discoveries.json")
+
+        races_path = world_dir / "races.json"
+        if races_path.exists():
+            races = json.loads(races_path.read_text(encoding="utf-8"))["races"]
+            settings["race_names"] = {rid: spec.get("name", rid)
+                                      for rid, spec in races.items()}
+            for ag in state.agents:
+                spec = races.get(ag.race)
+                if not spec:
+                    continue
+                for tech in spec.get("starting_knowledge", []):
+                    if tech not in ag.knowledge:
+                        ag.knowledge.append(tech)
+                for item, n in spec.get("starting_inventory", {}).items():
+                    ag.inventory[item] = ag.inventory.get(item, 0) + n
+                ag.warmth_decay_mult = spec.get("traits", {}).get(
+                    "warmth_decay_mult", 1.0)
+                if spec.get("blurb"):
+                    ag.persona = (spec["blurb"] + " " + ag.persona).strip()
+
+        props = PropertyBook.from_file(config_dir / "properties.json")
+        magic = MagicBook.from_file(config_dir / "magic.json", props)
+        graph = DiscoveryGraph.from_file(config_dir / "discoveries.json", props)
 
         brains, queue = {}, None
         if minds:
             from genesis.mind.groq import GroqAdapter
             from genesis.mind.llm_brain import LLMBrain
-            from genesis.mind.queue import ThreadedThinkQueue
+            from genesis.mind.queue import InlineQueue, ThreadedThinkQueue
             cfg = json.loads(
                 (config_dir / "brains.json").read_text(encoding="utf-8"))["brains"]
             for ag in state.agents:
                 spec = cfg.get(ag.brain) or cfg["default"]
                 brains[ag.id] = LLMBrain(GroqAdapter(spec["model"]), spec["model"])
-            queue = ThreadedThinkQueue(settings.get("daily_request_budget", 900))
+            # Default to the synchronous InlineQueue: engine.advance runs sim-time
+            # far faster than wall-time, so the async ThreadedThinkQueue's decisions
+            # return long past decision_stale_min and get dropped (0 land). Inline
+            # resolves each decision in-tick, so LLM minds actually drive batch runs.
+            # threaded=True keeps the async queue for a future real-time/paced loop.
+            queue = (ThreadedThinkQueue(settings.get("daily_request_budget", 900))
+                     if threaded else InlineQueue())
 
         return cls(state, settings=settings, maps=maps, magic=magic, graph=graph,
-                   brains=brains, queue=queue)
+                   brains=brains, queue=queue, props=props)
 
     def map_for(self, agent):
         return self.maps[agent.layer]
@@ -111,12 +146,14 @@ class Engine:
                 continue
             wm = self.map_for(agent)
             near = has_warmth_source(agent, self.state, self.settings)
-            events += tick_needs(agent, minute, self.settings, near_warmth=near)
+            events += tick_needs(agent, minute, self.settings,
+                                 near_warmth=near, props_of=self.props.props_of)
             layers = self.settings.get("layers", []) if self.settings else []
             if layers and 0 <= agent.layer < len(layers):
                 lc = layers[agent.layer]
                 events += miasma_tick(agent, lc, minute)
                 events += creature_damage(agent, lc)
+            events += self._contact_check(agent, minute)
             if agent.current_action is None and agent.status in ("active", "sleeping"):
                 action, extra = self._decide(agent, wm)
                 agent.current_action = action
@@ -135,9 +172,42 @@ class Engine:
             events += self.tick()
         return events
 
+    def _contact_check(self, agent, minute) -> list[dict]:
+        # First perception of a foreign race preempts the agent and marks it for
+        # a forced decision. Live sim only (never ADR-0001 catch-up); only raced
+        # agents make contact. A Brain is NOT required to EMIT the event (so the
+        # deterministic path is testable) — only to react to it (see _decide).
+        if not self._live or not agent.race:
+            return []
+        radius = self.settings.get("perception_radius", 6)
+        seen = self._contacted.setdefault(agent.id, set())
+        events = []
+        for other in perceive_agents(agent, self.state, radius):
+            r = other["race"]
+            if r and r != agent.race and r not in seen:
+                seen.add(r)
+                events.append({"type": "contact", "agent": agent.id, "race": r,
+                               "other": other["name"], "minute": minute})
+                # State what happened, not how to react — the Brain decides that.
+                people = self.settings.get("race_names", {}).get(r, r)
+                where = (f"{other['dist']} tiles to the {other['dir']}"
+                         if other["dist"] else "right beside you")
+                self._notices.setdefault(agent.id, []).append(
+                    f"You have just encountered {other['name']} of the {people} "
+                    f"people for the first time. They are {where}.")
+        if events:
+            agent.goal = None
+            agent.current_action = None
+            self._force_decide.add(agent.id)
+        return events
+
     def _decide(self, agent, wm):
         minute = self.state.sim_minutes
         extra: list[dict] = []
+        forced = agent.id in self._force_decide
+        self._force_decide.discard(agent.id)
+        # popped unconditionally so a notice never lingers into a later decision
+        notices = self._notices.pop(agent.id, [])
         # 1. drive an active goal
         if agent.goal is not None:
             act = self._drive(agent, wm)
@@ -151,13 +221,15 @@ class Engine:
             menu = affordances(agent, self.state, wm, self.settings,
                                self.graph, self.magic)
             landed = self._consume(agent, wm, menu, minute, extra)
-            if landed is not None:
+            if landed is not None and not forced:
                 return landed, extra
             cooldown = self.settings.get("decision_cooldown_min", 0)
-            if (not self.queue.pending(agent.id)
-                    and minute - self._last_submit.get(agent.id, -10**9) >= cooldown
-                    and menu):
+            ready = (not self.queue.pending(agent.id)
+                     and minute - self._last_submit.get(agent.id, -10**9) >= cooldown)
+            if (forced or ready) and menu:
                 ctx = self._context(agent, menu)
+                if forced and notices:
+                    ctx["notice"] = notices
                 self.queue.submit(DecisionJob(agent.id, minute, menu, ctx), brain)
                 self._last_submit[agent.id] = minute
                 landed = self._consume(agent, wm, menu, minute, extra)  # InlineQueue: ready now
@@ -186,6 +258,10 @@ class Engine:
         d = self.queue.pop(agent.id)
         if d is None:
             return None
+        if "error" in d:
+            extra.append({"type": "brain_failed", "agent": agent.id,
+                          "error": d["error"], "minute": minute})
+            return None
         aff = next((o for o in menu if o["id"] == d["choice"]), None)
         stale = self.settings.get("decision_stale_min", 10**9)
         if aff is None or minute - d["sim_minute"] > stale:
@@ -197,7 +273,16 @@ class Engine:
         return self._drive(agent, wm)
 
     def _context(self, agent, menu):
-        return {"persona": agent.persona, "needs": vars(agent.needs),
+        radius = self.settings.get("perception_radius", 6)
+        n = agent.needs
+        # Needs.hunger is satiety (100 = fully fed); an LLM reads "hunger": 100 as
+        # starving, so the Brain sees it as "satiety".
+        needs = {"satiety": n.hunger, "energy": n.energy, "warmth": n.warmth}
+        return {"persona": agent.persona, "needs": needs,
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
+                "materials": {it: sorted(self.props.props_of(it))
+                              for it in agent.inventory if agent.inventory[it] > 0},
+                "race": agent.race,
+                "nearby": perceive_agents(agent, self.state, radius),
                 "known": list(agent.knowledge), "options": menu}

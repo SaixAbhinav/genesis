@@ -26,5 +26,10 @@
   "mana_regen_sleeping_per_min": 0.5,
   "decision_cooldown_min": 30,
   "decision_stale_min": 20,
-  "daily_request_budget": 900
+  "daily_request_budget": 900,
+  "experiment_minutes": 15,
+  "metal_tools_gather_bonus": 3,
+  "insulation_warmth_factor": 0.4,
+  "experiment_max_items": 6,
+  "experiment_affordance_cap": 10
 }

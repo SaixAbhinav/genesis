@@ -32,3 +32,18 @@ def test_request_sets_user_agent_and_ample_token_budget(monkeypatch):
     G.GroqAdapter("m", api_key="k").complete("prompt", {})
     assert captured["headers"].get("User-Agent")            # non-default UA sent
     assert captured["body"]["max_tokens"] >= 512            # room for reasoning
+
+
+def test_http_error_body_is_surfaced(monkeypatch):
+    # urllib's HTTPError str() is just "HTTP Error 429: Too Many Requests"; the
+    # body says why (rate limit, json_validate_failed, ...). Keep it.
+    import io
+    import urllib.error
+
+    def fail(req, timeout):
+        raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {},
+                                     io.BytesIO(b'{"error":{"message":"Rate limit reached"}}'))
+
+    monkeypatch.setattr(G.urllib.request, "urlopen", fail)
+    with pytest.raises(BrainError, match="HTTP 429.*Rate limit reached"):
+        G.GroqAdapter("m", api_key="k").complete("hi", {})

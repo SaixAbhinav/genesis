@@ -27,6 +27,7 @@
     {"type": "water", "x": 12, "y": 8, "qty": 9999},
     {"type": "fish", "x": 7, "y": 8, "qty": 20},
     {"type": "mana_shard", "x": 15, "y": 3, "qty": 5},
-    {"type": "ember_dust", "x": 17, "y": 5, "qty": 5}
+    {"type": "ember_dust", "x": 17, "y": 5, "qty": 5},
+    {"type": "dry_grass", "x": 3, "y": 6, "qty": 10}
   ]
 }

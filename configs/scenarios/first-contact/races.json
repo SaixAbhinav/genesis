@@ -1,0 +1,18 @@
+{
+  "races": {
+    "ashfolk": {
+      "name": "Ashfolk",
+      "blurb": "You are of the Ashfolk, people of ember and warmth.",
+      "starting_knowledge": ["fire"],
+      "starting_inventory": {"flint": 1},
+      "traits": {"warmth_decay_mult": 0.6}
+    },
+    "mosskin": {
+      "name": "Mosskin",
+      "blurb": "You are of the Mosskin, who dwell among the damp forests.",
+      "starting_knowledge": [],
+      "starting_inventory": {"thick_moss": 1},
+      "traits": {}
+    }
+  }
+}
