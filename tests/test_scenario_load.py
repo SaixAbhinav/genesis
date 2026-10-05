@@ -18,6 +18,11 @@ def test_scenario_loads_races_and_applies_traits():
     assert fern.inventory.get("thick_moss", 0) == 1
 
 
+def test_scenario_exposes_race_display_names():
+    eng = Engine.from_configs("configs", scenario_dir=SC, seed=1, sim_minutes=0)
+    assert eng.settings["race_names"] == {"ashfolk": "Ashfolk", "mosskin": "Mosskin"}
+
+
 def test_scenario_is_single_layer_meadow():
     eng = Engine.from_configs("configs", scenario_dir=SC, seed=1, sim_minutes=0)
     assert len(eng.maps) == 1

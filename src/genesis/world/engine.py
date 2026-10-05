@@ -39,6 +39,7 @@ class Engine:
         self._last_submit: dict[str, int] = {}
         self._contacted: dict[str, set] = {}
         self._force_decide: set = set()
+        self._notices: dict[str, list] = {}
         self._live = True
 
     @classmethod
@@ -93,6 +94,8 @@ class Engine:
         races_path = world_dir / "races.json"
         if races_path.exists():
             races = json.loads(races_path.read_text(encoding="utf-8"))["races"]
+            settings["race_names"] = {rid: spec.get("name", rid)
+                                      for rid, spec in races.items()}
             for ag in state.agents:
                 spec = races.get(ag.race)
                 if not spec:
@@ -185,6 +188,13 @@ class Engine:
                 seen.add(r)
                 events.append({"type": "contact", "agent": agent.id, "race": r,
                                "other": other["name"], "minute": minute})
+                # State what happened, not how to react — the Brain decides that.
+                people = self.settings.get("race_names", {}).get(r, r)
+                where = (f"{other['dist']} tiles to the {other['dir']}"
+                         if other["dist"] else "right beside you")
+                self._notices.setdefault(agent.id, []).append(
+                    f"You have just encountered {other['name']} of the {people} "
+                    f"people for the first time. They are {where}.")
         if events:
             agent.goal = None
             agent.current_action = None
@@ -196,6 +206,8 @@ class Engine:
         extra: list[dict] = []
         forced = agent.id in self._force_decide
         self._force_decide.discard(agent.id)
+        # popped unconditionally so a notice never lingers into a later decision
+        notices = self._notices.pop(agent.id, [])
         # 1. drive an active goal
         if agent.goal is not None:
             act = self._drive(agent, wm)
@@ -216,6 +228,8 @@ class Engine:
                      and minute - self._last_submit.get(agent.id, -10**9) >= cooldown)
             if (forced or ready) and menu:
                 ctx = self._context(agent, menu)
+                if forced and notices:
+                    ctx["notice"] = notices
                 self.queue.submit(DecisionJob(agent.id, minute, menu, ctx), brain)
                 self._last_submit[agent.id] = minute
                 landed = self._consume(agent, wm, menu, minute, extra)  # InlineQueue: ready now
@@ -244,6 +258,10 @@ class Engine:
         d = self.queue.pop(agent.id)
         if d is None:
             return None
+        if "error" in d:
+            extra.append({"type": "brain_failed", "agent": agent.id,
+                          "error": d["error"], "minute": minute})
+            return None
         aff = next((o for o in menu if o["id"] == d["choice"]), None)
         stale = self.settings.get("decision_stale_min", 10**9)
         if aff is None or minute - d["sim_minute"] > stale:
@@ -256,7 +274,11 @@ class Engine:
 
     def _context(self, agent, menu):
         radius = self.settings.get("perception_radius", 6)
-        return {"persona": agent.persona, "needs": vars(agent.needs),
+        n = agent.needs
+        # Needs.hunger is satiety (100 = fully fed); an LLM reads "hunger": 100 as
+        # starving, so the Brain sees it as "satiety".
+        needs = {"satiety": n.hunger, "energy": n.energy, "warmth": n.warmth}
+        return {"persona": agent.persona, "needs": needs,
                 "strain": agent.strain, "mana": agent.mana, "mana_max": agent.mana_max,
                 "layer": agent.layer, "inventory": dict(agent.inventory),
                 "materials": {it: sorted(self.props.props_of(it))

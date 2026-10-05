@@ -40,3 +40,32 @@ def test_prompt_does_not_duplicate_options_in_state():
     p = _prompt(ctx, affs)
     assert '"options"' not in p          # not dumped inside the State JSON
     assert p.count("- eat:") == 1        # listed exactly once, in Options
+
+
+def test_prompt_renders_notice_as_its_own_line():
+    from genesis.mind.llm_brain import _prompt
+    note = "You have just encountered Fern of the Mosskin people for the first time."
+    p = _prompt({"persona": "curious", "notice": [note]}, AFFS)
+    assert f"Just happened: {note}" in p.splitlines()
+    assert '"notice"' not in p           # not buried in the State JSON
+    assert p.index("Just happened:") < p.index("State:")
+
+
+def test_prompt_states_needs_scale():
+    from genesis.mind.llm_brain import _prompt
+    p = _prompt({"needs": {"satiety": 100.0}}, AFFS)
+    assert "100 means fully satisfied" in p and "0 means critical" in p
+
+
+def test_brain_error_names_the_last_invalid_reply():
+    p = StubProvider([{"choice": "fly"}, {"choice": "swim"}])
+    with pytest.raises(BrainError, match="swim"):
+        LLMBrain(p, "m").choose({}, AFFS)
+
+
+def test_brain_error_names_provider_exception():
+    class Boom:
+        def complete(self, prompt, schema):
+            raise ValueError("bad json")
+    with pytest.raises(BrainError, match="ValueError: bad json"):
+        LLMBrain(Boom(), "m").choose({}, AFFS)
